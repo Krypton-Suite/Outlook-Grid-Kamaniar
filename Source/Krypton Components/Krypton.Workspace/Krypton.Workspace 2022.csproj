@@ -18,7 +18,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <RootNamespace>Krypton.Workspace</RootNamespace>
-    <AssemblyName>Krypton.Workspace</AssemblyName>
+    <AssemblyName>ARK.Workspace</AssemblyName>
     <!-- Set the CheckEolTargetFramework property to false to fix the warning -->
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
     <SignAssembly>True</SignAssembly>
@@ -42,7 +42,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>Krypton.Workspace</PackageId>
+    <PackageId>ARK.Workspace</PackageId>
     <Description>This is the workspace module.</Description>
   </PropertyGroup>
 

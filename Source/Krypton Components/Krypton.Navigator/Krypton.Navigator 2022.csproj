@@ -18,7 +18,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <RootNamespace>Krypton.Navigator</RootNamespace>
-    <AssemblyName>Krypton.Navigator</AssemblyName>
+    <AssemblyName>ARK.Navigator</AssemblyName>
     <!-- Set the CheckEolTargetFramework property to false to fix the warning -->
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
     <SignAssembly>True</SignAssembly>
@@ -42,7 +42,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>Krypton.Navigator</PackageId>
+    <PackageId>ARK.Navigator</PackageId>
     <Description>This is the navigator module.</Description>
   </PropertyGroup>
 

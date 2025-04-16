@@ -18,7 +18,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <RootNamespace>Krypton.Docking</RootNamespace>
-    <AssemblyName>Krypton.Docking</AssemblyName>
+    <AssemblyName>ARK.Docking</AssemblyName>
     <!-- Set the CheckEolTargetFramework property to false to fix the warning -->
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
     <ApplicationIcon>Krypton.ico</ApplicationIcon>
@@ -40,7 +40,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>Krypton.Docking</PackageId>
+    <PackageId>ARK.Docking</PackageId>
     <Description>This is the docking module.</Description>
   </PropertyGroup>
 

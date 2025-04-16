@@ -18,7 +18,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <RootNamespace>Krypton.Ribbon</RootNamespace>
-    <AssemblyName>Krypton.Ribbon</AssemblyName>
+    <AssemblyName>ARK.Ribbon</AssemblyName>
     <!-- Set the CheckEolTargetFramework property to false to fix the warning -->
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
     <SignAssembly>True</SignAssembly>
@@ -42,7 +42,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <PackageId>Krypton.Ribbon</PackageId>
+    <PackageId>ARK.Ribbon</PackageId>
     <Description>This is the ribbon module.</Description>
   </PropertyGroup>
 
