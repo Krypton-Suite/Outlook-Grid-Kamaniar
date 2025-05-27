@@ -38,12 +38,12 @@ namespace TestForm
         private void InitializeComponent()
         {
             this.kryptonPanel1 = new Krypton.Toolkit.KryptonPanel();
-            this.txtNormalTextBox = new System.Windows.Forms.TextBox();
-            this.ktxtKryptonTextBox = new Krypton.Toolkit.KryptonTextBox();
-            this.lbNormalTextBoxEvents = new System.Windows.Forms.ListBox();
-            this.klbKryptonTextBoxEvents = new Krypton.Toolkit.KryptonListBox();
-            this.kbtnClearNormalEvents = new Krypton.Toolkit.KryptonButton();
             this.kbtnClearKryptonEvents = new Krypton.Toolkit.KryptonButton();
+            this.kbtnClearNormalEvents = new Krypton.Toolkit.KryptonButton();
+            this.klbKryptonTextBoxEvents = new Krypton.Toolkit.KryptonListBox();
+            this.lbNormalTextBoxEvents = new System.Windows.Forms.ListBox();
+            this.ktxtKryptonTextBox = new Krypton.Toolkit.KryptonTextBox();
+            this.txtNormalTextBox = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.kryptonPanel1)).BeginInit();
             this.kryptonPanel1.SuspendLayout();
             this.SuspendLayout();
@@ -56,11 +56,63 @@ namespace TestForm
             this.kryptonPanel1.Controls.Add(this.lbNormalTextBoxEvents);
             this.kryptonPanel1.Controls.Add(this.ktxtKryptonTextBox);
             this.kryptonPanel1.Controls.Add(this.txtNormalTextBox);
-            this.kryptonPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.kryptonPanel1.Location = new System.Drawing.Point(0, 0);
             this.kryptonPanel1.Name = "kryptonPanel1";
-            this.kryptonPanel1.Size = new System.Drawing.Size(555, 311);
+            this.kryptonPanel1.Size = new System.Drawing.Size(530, 312);
             this.kryptonPanel1.TabIndex = 0;
+            // 
+            // kbtnClearKryptonEvents
+            // 
+            this.kbtnClearKryptonEvents.Location = new System.Drawing.Point(281, 275);
+            this.kbtnClearKryptonEvents.Name = "kbtnClearKryptonEvents";
+            this.kbtnClearKryptonEvents.Size = new System.Drawing.Size(262, 25);
+            this.kbtnClearKryptonEvents.TabIndex = 5;
+            this.kbtnClearKryptonEvents.Values.DropDownArrowColor = System.Drawing.Color.Empty;
+            this.kbtnClearKryptonEvents.Values.Text = "Clear Events";
+            this.kbtnClearKryptonEvents.Click += new System.EventHandler(this.kbtnClearKryptonEvents_Click);
+            // 
+            // kbtnClearNormalEvents
+            // 
+            this.kbtnClearNormalEvents.Location = new System.Drawing.Point(13, 275);
+            this.kbtnClearNormalEvents.Name = "kbtnClearNormalEvents";
+            this.kbtnClearNormalEvents.Size = new System.Drawing.Size(262, 25);
+            this.kbtnClearNormalEvents.TabIndex = 4;
+            this.kbtnClearNormalEvents.Values.DropDownArrowColor = System.Drawing.Color.Empty;
+            this.kbtnClearNormalEvents.Values.Text = "Clear Events";
+            this.kbtnClearNormalEvents.Click += new System.EventHandler(this.kbtnClearNormalEvents_Click);
+            // 
+            // klbKryptonTextBoxEvents
+            // 
+            this.klbKryptonTextBoxEvents.Location = new System.Drawing.Point(282, 43);
+            this.klbKryptonTextBoxEvents.Name = "klbKryptonTextBoxEvents";
+            this.klbKryptonTextBoxEvents.Size = new System.Drawing.Size(261, 225);
+            this.klbKryptonTextBoxEvents.TabIndex = 3;
+            // 
+            // lbNormalTextBoxEvents
+            // 
+            this.lbNormalTextBoxEvents.FormattingEnabled = true;
+            this.lbNormalTextBoxEvents.Location = new System.Drawing.Point(13, 43);
+            this.lbNormalTextBoxEvents.Name = "lbNormalTextBoxEvents";
+            this.lbNormalTextBoxEvents.Size = new System.Drawing.Size(262, 225);
+            this.lbNormalTextBoxEvents.TabIndex = 2;
+            // 
+            // ktxtKryptonTextBox
+            // 
+            this.ktxtKryptonTextBox.Location = new System.Drawing.Point(281, 13);
+            this.ktxtKryptonTextBox.Name = "ktxtKryptonTextBox";
+            this.ktxtKryptonTextBox.Size = new System.Drawing.Size(262, 23);
+            this.ktxtKryptonTextBox.TabIndex = 1;
+            this.ktxtKryptonTextBox.TabStop = false;
+            this.ktxtKryptonTextBox.Click += new System.EventHandler(this.ktxtKryptonTextBox_Click);
+            this.ktxtKryptonTextBox.DoubleClick += new System.EventHandler(this.ktxtKryptonTextBox_DoubleClick);
+            this.ktxtKryptonTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ktxtKryptonTextBox_KeyDown);
+            this.ktxtKryptonTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.ktxtKryptonTextBox_KeyPress);
+            this.ktxtKryptonTextBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.ktxtKryptonTextBox_KeyUp);
+            this.ktxtKryptonTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.ktxtKryptonTextBox_MouseClick);
+            this.ktxtKryptonTextBox.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.ktxtKryptonTextBox_MouseDoubleClick);
+            this.ktxtKryptonTextBox.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.ktxtKryptonTextBox_PreviewKeyDown);
+            this.ktxtKryptonTextBox.Validating += new System.ComponentModel.CancelEventHandler(this.ktxtKryptonTextBox_Validating);
+            this.ktxtKryptonTextBox.Validated += new System.EventHandler(this.ktxtKryptonTextBox_Validated);
             // 
             // txtNormalTextBox
             // 
@@ -79,62 +131,13 @@ namespace TestForm
             this.txtNormalTextBox.Validating += new System.ComponentModel.CancelEventHandler(this.txtNormalTextBox_Validating);
             this.txtNormalTextBox.Validated += new System.EventHandler(this.txtNormalTextBox_Validated);
             // 
-            // ktxtKryptonTextBox
-            // 
-            this.ktxtKryptonTextBox.Location = new System.Drawing.Point(281, 13);
-            this.ktxtKryptonTextBox.Name = "ktxtKryptonTextBox";
-            this.ktxtKryptonTextBox.Size = new System.Drawing.Size(262, 23);
-            this.ktxtKryptonTextBox.TabIndex = 1;
-            this.ktxtKryptonTextBox.Click += new System.EventHandler(this.ktxtKryptonTextBox_Click);
-            this.ktxtKryptonTextBox.DoubleClick += new System.EventHandler(this.ktxtKryptonTextBox_DoubleClick);
-            this.ktxtKryptonTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ktxtKryptonTextBox_KeyDown);
-            this.ktxtKryptonTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.ktxtKryptonTextBox_KeyPress);
-            this.ktxtKryptonTextBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.ktxtKryptonTextBox_KeyUp);
-            this.ktxtKryptonTextBox.MouseClick += new System.Windows.Forms.MouseEventHandler(this.ktxtKryptonTextBox_MouseClick);
-            this.ktxtKryptonTextBox.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.ktxtKryptonTextBox_MouseDoubleClick);
-            this.ktxtKryptonTextBox.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.ktxtKryptonTextBox_PreviewKeyDown);
-            this.ktxtKryptonTextBox.Validating += new System.ComponentModel.CancelEventHandler(this.ktxtKryptonTextBox_Validating);
-            this.ktxtKryptonTextBox.Validated += new System.EventHandler(this.ktxtKryptonTextBox_Validated);
-            // 
-            // lbNormalTextBoxEvents
-            // 
-            this.lbNormalTextBoxEvents.FormattingEnabled = true;
-            this.lbNormalTextBoxEvents.Location = new System.Drawing.Point(13, 43);
-            this.lbNormalTextBoxEvents.Name = "lbNormalTextBoxEvents";
-            this.lbNormalTextBoxEvents.Size = new System.Drawing.Size(262, 225);
-            this.lbNormalTextBoxEvents.TabIndex = 2;
-            // 
-            // klbKryptonTextBoxEvents
-            // 
-            this.klbKryptonTextBoxEvents.Location = new System.Drawing.Point(282, 43);
-            this.klbKryptonTextBoxEvents.Name = "klbKryptonTextBoxEvents";
-            this.klbKryptonTextBoxEvents.Size = new System.Drawing.Size(261, 225);
-            this.klbKryptonTextBoxEvents.TabIndex = 3;
-            // 
-            // kbtnClearNormalEvents
-            // 
-            this.kbtnClearNormalEvents.Location = new System.Drawing.Point(13, 275);
-            this.kbtnClearNormalEvents.Name = "kbtnClearNormalEvents";
-            this.kbtnClearNormalEvents.Size = new System.Drawing.Size(262, 25);
-            this.kbtnClearNormalEvents.TabIndex = 4;
-            this.kbtnClearNormalEvents.Values.DropDownArrowColor = System.Drawing.Color.Empty;
-            this.kbtnClearNormalEvents.Values.Text = "Clear Events";
-            this.kbtnClearNormalEvents.Click += new System.EventHandler(this.kbtnClearNormalEvents_Click);
-            // 
-            // kbtnClearKryptonEvents
-            // 
-            this.kbtnClearKryptonEvents.Location = new System.Drawing.Point(281, 275);
-            this.kbtnClearKryptonEvents.Name = "kbtnClearKryptonEvents";
-            this.kbtnClearKryptonEvents.Size = new System.Drawing.Size(262, 25);
-            this.kbtnClearKryptonEvents.TabIndex = 5;
-            this.kbtnClearKryptonEvents.Values.Text = "Clear Events";
-            this.kbtnClearKryptonEvents.Click += new System.EventHandler(this.kbtnClearKryptonEvents_Click);
-            // 
             // TextBoxEventTest
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(555, 311);
+            this.AutoSize = true;
+            this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.ClientSize = new System.Drawing.Size(591, 288);
             this.Controls.Add(this.kryptonPanel1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
             this.MaximizeBox = false;
@@ -146,6 +149,7 @@ namespace TestForm
             this.kryptonPanel1.ResumeLayout(false);
             this.kryptonPanel1.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 

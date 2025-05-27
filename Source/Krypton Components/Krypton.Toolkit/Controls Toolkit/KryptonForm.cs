@@ -104,7 +104,7 @@ namespace Krypton.Toolkit
         private KryptonFormTitleStyle _titleStyle;
         private InheritBool _internalPanelState;
         private int _foundRibbonOffset = -1;
-        private readonly KryptonPanel _internalKryptonPanel;
+        private KryptonPanel _internalKryptonPanel;
 
         #endregion
 
@@ -451,13 +451,13 @@ namespace Krypton.Toolkit
                     _internalKryptonPanel.ClientSize = ClientSize;
                 }
                 // Deal with adding after the `InitializeComponent` has completed
-                return _foundRibbonOffset == -1 
-                    ? _internalKryptonPanel.Controls 
+                return _foundRibbonOffset == -1
+                    ? _internalKryptonPanel.Controls
                     : base.Controls;
             }
         }
 
-#endregion
+        #endregion
 
         #region Public
         /// <summary>
