@@ -230,7 +230,7 @@ namespace Krypton.Toolkit
         /// Gets or sets the associated DataGridView column.
         /// </summary>
         [DisallowNull]
-        public virtual OutlookGridColumn Column 
+        public virtual OutlookGridColumn Column
         {
             get => _column!;
             set => _column = value ?? throw new NullReferenceException(GlobalStaticValues.PropertyCannotBeNull(nameof(this.Column)));
@@ -341,7 +341,7 @@ namespace Krypton.Toolkit
         #region IComparable Members
 
         /// <summary>
-        /// This is a comparison operation based on the type of the value. 
+        /// This is a comparison operation based on the type of the value.
         /// </summary>
         /// <param name="obj">the value in the related column of the item to compare to</param>
         /// <returns></returns>
@@ -349,7 +349,7 @@ namespace Krypton.Toolkit
         {
             int orderModifier = Column.SortDirection == SortOrder.Ascending ? 1 : -1;
             int compareResult = 0;
-            
+
             object? o2 = (obj as OutlookGridDefaultGroup)?.Value;
 
             if ((_val == null || _val == DBNull.Value) && o2 != null && o2 != DBNull.Value)
@@ -362,7 +362,11 @@ namespace Krypton.Toolkit
             }
             else
             {
-                if (_val is string)
+                if (_itemsComparer != null) // Use custom comparer if provided
+                {
+                    compareResult = _itemsComparer.Compare(_val, o2) * orderModifier;
+                }
+                else if (_val is string)
                 {
                     compareResult = string.Compare(_val.ToString(), o2!.ToString()) * orderModifier;
                 }
@@ -415,11 +419,31 @@ namespace Krypton.Toolkit
                     compareResult = ((TextAndImage)_val).CompareTo((TextAndImage)o2!) * orderModifier;
                 }
                 //TODO implement a value for Token Column ??
-                else if (_val is Token)
+                else if (_val is Token) 
                 {
                     compareResult = ((Token)_val).CompareTo((Token)o2!) * orderModifier;
                 }
+                else if (_val is IComparable comparableValue) // Fallback for other IComparable types
+                {
+                    compareResult = comparableValue.CompareTo(o2) * orderModifier;
+                }
+                else
+                {
+                    // If all else fails, use ToString() for comparison (might not be ideal for all types)
+                    compareResult = string.Compare(_val?.ToString(), o2?.ToString()) * orderModifier;
+                }
             }
+
+            // If SortBySummaryCount is true, use ItemCount for comparison
+            /*if (SortBySummaryCount)
+            {
+                IOutlookGridGroup? otherGroup = obj as IOutlookGridGroup;
+                if (otherGroup != null)
+                {
+                    compareResult = _itemCount.CompareTo(otherGroup.ItemCount) * orderModifier;
+                }
+            }*/
+
             return compareResult;
         }
         #endregion

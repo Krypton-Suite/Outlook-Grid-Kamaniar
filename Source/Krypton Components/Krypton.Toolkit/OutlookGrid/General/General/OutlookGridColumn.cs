@@ -27,7 +27,7 @@ namespace Krypton.Toolkit
     public class OutlookGridColumn : IEquatable<OutlookGridColumn>
     {
         #region Identity
-        /// <summary>
+        /*/// <summary>
         /// Constructor
         /// </summary>
         /// <param name="col">The DataGridViewColumn.</param>
@@ -45,6 +45,7 @@ namespace Krypton.Toolkit
             GroupIndex = groupIndex;
             SortIndex = sortIndex;
             RowsComparer = comparer;
+            AggregationType = AggregationType.None;
         }
 
         /// <summary>
@@ -66,6 +67,7 @@ namespace Krypton.Toolkit
             GroupIndex = groupIndex;
             SortIndex = sortIndex;
             RowsComparer = comparer;
+            AggregationType = AggregationType.None;
         }
 
         /// <summary>
@@ -85,6 +87,7 @@ namespace Krypton.Toolkit
             SortDirection = sortDirection;
             GroupIndex = groupIndex;
             SortIndex = sortIndex;
+            AggregationType = AggregationType.None;
         }
 
         /// <summary>Initializes a new instance of the <see cref="OutlookGridColumn" /> class.</summary>
@@ -100,6 +103,90 @@ namespace Krypton.Toolkit
             SortDirection = sortOrder;
             GroupIndex = groupIndex;
             SortIndex = sortIndex;
+            AggregationType = AggregationType.None;
+        }*/
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="col">The DataGridViewColumn.</param>
+        /// <param name="group">The group type for the column.</param>
+        /// <param name="sortDirection">The sort direction.</param>
+        /// <param name="groupIndex">The column's position in grouping and at which level.</param>
+        /// <param name="sortIndex">the column's position among sorted columns.</param>
+        /// <param name="comparer">The comparer if needed.</param>
+        /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
+        public OutlookGridColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, AggregationType aggregationType = AggregationType.None)
+        {
+            DataGridViewColumn = col;
+            Name = col?.Name;
+            GroupingType = group;
+            SortDirection = sortDirection;
+            GroupIndex = groupIndex;
+            SortIndex = sortIndex;
+            RowsComparer = comparer;
+            AggregationType = aggregationType;
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="columnName">The name.</param>
+        /// <param name="col">The DataGridViewColumn.</param>
+        /// <param name="group">The group type for the column.</param>
+        /// <param name="sortDirection">The sort direction.</param>
+        /// <param name="groupIndex">The column's position in grouping and at which level.</param>
+        /// <param name="sortIndex">the column's position among sorted columns.</param>
+        /// <param name="comparer">The comparer if needed</param>
+        /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
+        public OutlookGridColumn(string? columnName, DataGridViewColumn? col, IOutlookGridGroup? group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, AggregationType aggregationType = AggregationType.None)
+        {
+            DataGridViewColumn = col!;
+            Name = columnName;
+            GroupingType = group;
+            SortDirection = sortDirection;
+            GroupIndex = groupIndex;
+            SortIndex = sortIndex;
+            RowsComparer = comparer;
+            AggregationType = aggregationType;
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="columnName">The name.</param>
+        /// <param name="col">The DataGridViewColumn.</param>
+        /// <param name="group">The group type for the column.</param>
+        /// <param name="sortDirection">The sort direction.</param>
+        /// <param name="groupIndex">The column's position in grouping and at which level.</param>
+        /// <param name="sortIndex">the column's position among sorted columns.</param>
+        /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
+        public OutlookGridColumn(string columnName, DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, AggregationType aggregationType = AggregationType.None)
+        {
+            DataGridViewColumn = col;
+            Name = columnName;
+            GroupingType = group;
+            SortDirection = sortDirection;
+            GroupIndex = groupIndex;
+            SortIndex = sortIndex;
+            AggregationType = aggregationType;
+        }
+
+        /// <summary>Initializes a new instance of the <see cref="OutlookGridColumn" /> class.</summary>
+        /// <param name="dataGridViewColumn">The data grid view column.</param>
+        /// <param name="group">The group.</param>
+        /// <param name="sortOrder">The sort order.</param>
+        /// <param name="groupIndex">Index of the group.</param>
+        /// <param name="sortIndex">Index of the sort.</param>
+        /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
+        public OutlookGridColumn(DataGridViewColumn dataGridViewColumn, IOutlookGridGroup? group, SortOrder sortOrder, int groupIndex, int sortIndex, AggregationType aggregationType = AggregationType.None)
+        {
+            DataGridViewColumn = dataGridViewColumn;
+            GroupingType = group;
+            SortDirection = sortOrder;
+            GroupIndex = groupIndex;
+            SortIndex = sortIndex;
+            AggregationType = aggregationType;
         }
         #endregion
 
@@ -144,6 +231,26 @@ namespace Krypton.Toolkit
         /// </summary>
         public IComparer? RowsComparer { get; set; }
 
+        /// <summary>
+        /// Gets or sets the type of aggregation to perform on this column.
+        /// </summary>
+        public AggregationType AggregationType { get; set; }
+
+        /// <summary>
+        /// Gets or sets the format string for displaying the aggregated value (e.g., "C" for currency, "N0" for number with no decimals).
+        /// </summary>
+        public string? AggregationFormatString { get; set; }
+
+        /// <summary>
+        /// Gets the list of <see cref="FilterField"/> objects representing the current filter configuration.
+        /// </summary>
+        public List<FilterField>? Filters { get; set; }
+
+        /// <summary>
+        /// Gets or sets the type of aggregation to perform on this column.
+        /// </summary>
+        public bool AvailableInContextMenu { get; set; } = true;
+
         #endregion
 
         #region Implements
@@ -151,7 +258,7 @@ namespace Krypton.Toolkit
         /// <summary>Defines Equals method (interface IEquatable)</summary>
         /// <param name="other">The OutlookGridColumn to compare with</param>
         /// <returns></returns>
-        public bool Equals(OutlookGridColumn? other) 
+        public bool Equals(OutlookGridColumn? other)
             // Use of [DisallowNull] not possible due to interface restrictions (earlier requested change reverted)
             => DataGridViewColumn.Name.Equals(other?.DataGridViewColumn.Name);
 

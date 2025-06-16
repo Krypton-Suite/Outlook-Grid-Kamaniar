@@ -55,6 +55,131 @@ namespace Krypton.Toolkit
                     {
                         orderModifier = _sortColumnIndexAndOrder[i].Item2 == SortOrder.Ascending ? 1 : -1;
 
+                        var cellX = x?.Cells[_sortColumnIndexAndOrder[i].Item1];
+                        var cellY = y?.Cells[_sortColumnIndexAndOrder[i].Item1];
+
+                        var valType = cellX?.ValueType;
+                        var o1 = cellX?.Value;
+                        var o2 = cellY?.Value;
+
+                        if (_sortColumnIndexAndOrder[i].Item3 != null)
+                        {
+                            compareResult = _sortColumnIndexAndOrder[i].Item3.Compare(o1, o2) * orderModifier;
+                        }
+                        else if ((o1 == null || o1 == DBNull.Value) && o2 != null && o2 != DBNull.Value)
+                        {
+                            compareResult = 1;
+                        }
+                        else if (o1 != null && o1 != DBNull.Value && (o2 == null || o2 == DBNull.Value))
+                        {
+                            compareResult = -1;
+                        }
+                        else if (valType != null)
+                        {
+                            switch (Type.GetTypeCode(valType))
+                            {
+                                case TypeCode.String:
+                                    //compareResult = string.CompareOrdinal(o1?.ToString(), o2?.ToString()) * orderModifier;
+                                    compareResult = string.Compare(o1?.ToString(), o2?.ToString(), StringComparison.OrdinalIgnoreCase) * orderModifier;
+                                    break;
+                                case TypeCode.DateTime:
+                                    compareResult = Convert.ToDateTime(o1).CompareTo(Convert.ToDateTime(o2)) * orderModifier;
+                                    break;
+                                case TypeCode.Int16:
+                                    compareResult = Convert.ToInt16(o1).CompareTo(Convert.ToInt16(o2)) * orderModifier;
+                                    break;
+                                case TypeCode.Int32:
+                                    compareResult = Convert.ToInt32(o1).CompareTo(Convert.ToInt32(o2)) * orderModifier;
+                                    break;
+                                case TypeCode.Int64:
+                                    compareResult = Convert.ToInt64(o1).CompareTo(Convert.ToInt64(o2)) * orderModifier;
+                                    break;
+                                case TypeCode.Boolean:
+                                    compareResult = (Convert.ToBoolean(o1) == Convert.ToBoolean(o2) ? 0 : Convert.ToBoolean(o1) ? 1 : -1) * orderModifier;
+                                    break;
+                                case TypeCode.Single:
+                                    compareResult = Convert.ToSingle(o1).CompareTo(Convert.ToSingle(o2)) * orderModifier;
+                                    break;
+                                case TypeCode.Double:
+                                    compareResult = Convert.ToDouble(o1).CompareTo(Convert.ToDouble(o2)) * orderModifier;
+                                    break;
+                                case TypeCode.Decimal:
+                                    compareResult = Convert.ToDecimal(o1).CompareTo(Convert.ToDecimal(o2)) * orderModifier;
+                                    break;
+                                case TypeCode.Object when o1 is TimeSpan ts1 && o2 is TimeSpan ts2:
+                                    compareResult = ts1.CompareTo(ts2) * orderModifier;
+                                    break;
+                                case TypeCode.Object when o1 is TextAndImage ti1 && o2 is TextAndImage ti2:
+                                    compareResult = ti1.CompareTo(ti2) * orderModifier;
+                                    break;
+                                case TypeCode.Object when o1 is Token tok1 && o2 is Token tok2:
+                                    compareResult = tok1.CompareTo(tok2) * orderModifier;
+                                    break;
+                                default:
+                                    break;
+                                    //throw new InvalidCastException($"Unsupported type comparison: {valType}");
+                            }
+                        }
+                        else
+                        {
+                            // **Fallback to the original method**
+                            if (o1 is string)
+                                //compareResult = string.CompareOrdinal(o1.ToString(), o2!.ToString()) * orderModifier;
+                                compareResult = string.Compare(o1?.ToString(), o2?.ToString(), StringComparison.OrdinalIgnoreCase) * orderModifier;
+                            else if (o1 is DateTime)
+                                compareResult = ((DateTime)o1).CompareTo((DateTime)o2!) * orderModifier;
+                            else if (o1 is int)
+                                compareResult = ((int)o1).CompareTo((int)o2!) * orderModifier;
+                            else if (o1 is bool)
+                            {
+                                var b1 = (bool)o1;
+                                var b2 = (bool)o2!;
+                                compareResult = (b1 == b2 ? 0 : b1 ? 1 : -1) * orderModifier;
+                            }
+                            else if (o1 is float)
+                                compareResult = ((float)o1).CompareTo(Convert.ToSingle(o2)) * orderModifier;
+                            else if (o1 is double)
+                                compareResult = ((double)o1).CompareTo(Convert.ToDouble(o2)) * orderModifier;
+                            else if (o1 is decimal)
+                                compareResult = ((decimal)o1).CompareTo(Convert.ToDecimal(o2)) * orderModifier;
+                            else if (o1 is long)
+                                compareResult = ((long)o1).CompareTo(Convert.ToInt64(o2)) * orderModifier;
+                            else if (o1 is TimeSpan)
+                                compareResult = ((TimeSpan)o1).CompareTo((TimeSpan)o2!) * orderModifier;
+                            else if (o1 is TextAndImage)
+                                compareResult = ((TextAndImage)o1).CompareTo(o2 as TextAndImage) * orderModifier;
+                            else if (o1 is Token)
+                                compareResult = ((Token)o1).CompareTo(o2 as Token) * orderModifier;
+                        }
+                    }
+                }
+                return compareResult;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"OutlookGridRowComparer: {ToString()}", ex);
+            }
+        }
+
+        /*/// <summary>
+        /// Compares the specified x.
+        /// </summary>
+        /// <param name="x">The x.</param>
+        /// <param name="y">The y.</param>
+        /// <returns></returns>
+        /// <exception cref="System.Exception">OutlookGridRowComparer:  + this.ToString()</exception>
+        public int Compare(OutlookGridRow? x, OutlookGridRow? y)
+        {
+            int compareResult = 0, orderModifier;
+
+            try
+            {
+                for (var i = 0; i < _sortColumnIndexAndOrder.Count; i++)
+                {
+                    if (compareResult == 0)
+                    {
+                        orderModifier = _sortColumnIndexAndOrder[i].Item2 == SortOrder.Ascending ? 1 : -1;
+
                         var o1 = x!.Cells[_sortColumnIndexAndOrder[i].Item1].Value;
                         var o2 = y!.Cells[_sortColumnIndexAndOrder[i].Item1].Value;
                         if (_sortColumnIndexAndOrder[i].Item3 != null)
@@ -139,7 +264,7 @@ namespace Krypton.Toolkit
             {
                 throw new($"OutlookGridRowComparer: {ToString()}", ex);
             }
-        }
+        }*/
         #endregion
     }
 }

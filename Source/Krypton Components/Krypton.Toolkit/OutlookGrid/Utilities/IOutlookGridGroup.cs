@@ -58,7 +58,7 @@
         IOutlookGridGroup? ParentGroup { get; set; }
 
         /// <summary>
-        /// The level in the depth of groups 
+        /// The level in the depth of groups
         /// </summary>
         int Level { get; set; }
 

@@ -23,7 +23,7 @@ namespace Krypton.Toolkit
 {
     /// <summary>
     /// OutlookGridRow - subclasses the DataGridView's DataGridViewRow class
-    /// In order to support grouping with the same look and feel as Outlook, the behaviour
+    /// In order to support grouping with the same look and feel as Outlook, the behavior
     /// of the DataGridViewRow is overridden by the OutlookGridRow.
     /// The OutlookGridRow has 2 main additional properties: the Group it belongs to and
     /// a the IsRowGroup flag that indicates whether the OutlookGridRow object behaves like
@@ -34,6 +34,7 @@ namespace Krypton.Toolkit
         #region "Variables"
 
         private bool _isGroupRow;
+        private bool _isSummaryRow;
         private IOutlookGridGroup? _group;
         private bool _collapsed; //For TreeNode
         private OutlookGridRowNodeCollection _nodeCollection; //For TreeNode
@@ -68,6 +69,16 @@ namespace Krypton.Toolkit
         {
             get => _isGroupRow;
             set => _isGroupRow = value;
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this row is an aggregation summary row.
+        /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public bool IsSummaryRow
+        {
+            get => _isSummaryRow;
+            set => _isSummaryRow = value;
         }
 
         /// <summary>
@@ -261,11 +272,51 @@ namespace Krypton.Toolkit
                 int groupLevelIndentation = _group!.Level * GlobalStaticValues.GroupLevelMultiplier;
 
                 int gridwidth = grid.Columns.GetColumnsWidth(DataGridViewElementStates.Visible);
-                Rectangle myRowBounds = rowBounds;
-                myRowBounds.Width = gridwidth;
 
-                IPaletteBack paletteBack = grid.StateNormal.DataCell.Back;
-                IPaletteBorder paletteBorder = grid.StateNormal.DataCell.Border;
+                Rectangle contentBounds = new Rectangle(
+                    rowBounds.Left + rowHeadersWidth, // Start X after row headers
+                    rowBounds.Top,
+                    gridwidth, // Width of data columns
+                    rowBounds.Height
+                );
+
+                contentBounds.X -= grid.HorizontalScrollingOffset;
+
+                // --- Handle RowHeader area painting first ---
+                if (grid.RowHeadersVisible)
+                {
+                    Rectangle rowHeaderPaintArea = new Rectangle(rowBounds.Left, rowBounds.Top, rowHeadersWidth, rowBounds.Height);
+                    rowHeaderPaintArea.X -= grid.HorizontalScrollingOffset; // Account for scrolling
+
+                    IPaletteBack rowHeaderPaletteBack = grid.StateNormal.HeaderRow.Back;
+                    IPaletteBorder rowHeaderPaletteBorder = grid.StateNormal.HeaderRow.Border;
+
+                    using (RenderContext rhRenderContext = new RenderContext(grid, graphics, rowHeaderPaintArea, grid.Renderer!))
+                    {
+                        // Draw row header background
+                        using (GraphicsPath rhPath = grid.Renderer!.RenderStandardBorder.GetBackPath(rhRenderContext, rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, PaletteState.Normal))
+                        {
+                            IDisposable? rhUnusedBack = grid.Renderer.RenderStandardBack.DrawBack(rhRenderContext,
+                                rowHeaderPaintArea, rhPath, rowHeaderPaletteBack, VisualOrientation.Top, PaletteState.Normal, null);
+                            if (rhUnusedBack != null) rhUnusedBack.Dispose();
+                        }
+
+                        // Draw the right border of the row header area.
+                        // This creates the "left border" for your content area.
+                        grid.Renderer.RenderStandardBorder.DrawBorder(rhRenderContext,
+                            rowHeaderPaintArea, // The area to draw border around
+                            rowHeaderPaletteBorder,
+                            VisualOrientation.Top,
+                            PaletteState.Normal
+                        );
+                    }
+                }
+                // --- End of RowHeader area painting ---
+
+
+                // --- Paint the Group Row's Content Area ---
+                IPaletteBack contentPaletteBack = grid.StateNormal.DataCell.Back;
+                IPaletteBorder contentPaletteBorder = grid.StateNormal.DataCell.Border; // Use DataCell borders for content
 
                 PaletteState state = PaletteState.Normal;
                 if (grid.PreviousSelectedGroupRow == rowIndex && KryptonManager.CurrentGlobalPalette.GetRenderer() != KryptonManager.RenderOffice2013)
@@ -273,82 +324,86 @@ namespace Krypton.Toolkit
                     state = PaletteState.CheckedNormal;
                 }
 
-                using (RenderContext renderContext = new(grid, graphics, myRowBounds, grid.Renderer!))
+                using (RenderContext renderContext = new(grid, graphics, contentBounds, grid.Renderer!))
                 {
-                    using (GraphicsPath path = grid.Renderer!.RenderStandardBorder.GetBackPath(renderContext, myRowBounds, paletteBorder, VisualOrientation.Top, PaletteState.Normal))
+                    // Draw content background
+                    using (GraphicsPath path = grid.Renderer!.RenderStandardBorder.GetBackPath(renderContext, contentBounds, contentPaletteBorder, VisualOrientation.Top, PaletteState.Normal))
                     {
-                        //Back
-                        IDisposable? unused = grid.Renderer.RenderStandardBack.DrawBack(renderContext,
-                            myRowBounds,
-                            path,
-                            paletteBack,
-                            VisualOrientation.Top,
-                            state,
-                            null);
-
-                        // We never save the memento for reuse later
-                        if (unused != null)
-                        {
-                            unused.Dispose();
-                            unused = null;
-                        }
+                        IDisposable? unusedBack = grid.Renderer.RenderStandardBack.DrawBack(renderContext,
+                            contentBounds, path, contentPaletteBack, VisualOrientation.Top, state, null);
+                        if (unusedBack != null) unusedBack.Dispose();
                     }
+
+                    // Draw the border for the content area.
+                    // We draw top, bottom, and right. The left border is handled by the row header's right border.
+                    grid.Renderer.RenderStandardBorder.DrawBorder(renderContext,
+                        contentBounds,
+                        contentPaletteBorder,
+                        VisualOrientation.Top,
+                        state
+                    );
                 }
 
-                // Draw the botton : solid line for 2007 palettes or dot line for 2010 palettes, full background for 2013
+                // Draw the custom bottom line (dashed, specific color, etc.)
+                // This is separate because it has special styling (dash style for 2010, fill for 2013, etc.)
                 if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010)
                 {
                     using (Pen focusPen = new(Color.Gray))
                     {
                         focusPen.DashStyle = DashStyle.Dash;
-                        graphics.DrawLine(focusPen, rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset, rowBounds.Bottom - 1, gridwidth + 1, rowBounds.Bottom - 1);
+                        graphics.DrawLine(focusPen, contentBounds.Left, rowBounds.Bottom - 1, contentBounds.Right + 1, rowBounds.Bottom - 1);
                     }
                 }
                 else if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
                 {
                     using (SolidBrush br = new(Color.FromArgb(225, 225, 225)))
                     {
-                        graphics.FillRectangle(br, rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset, rowBounds.Bottom - GlobalStaticValues.Office2013GroupRowHeight, gridwidth + 1, GlobalStaticValues.Office2013GroupRowHeight - 1);
+                        graphics.FillRectangle(br, contentBounds.Left, rowBounds.Bottom - GlobalStaticValues.Office2013GroupRowHeight, contentBounds.Width + 1, GlobalStaticValues.Office2013GroupRowHeight - 1);
                     }
                 }
                 else
                 {
-                    using (SolidBrush br = new(paletteBorder.GetBorderColor1(state)))
+                    using (SolidBrush br = new(contentPaletteBorder.GetBorderColor1(state))) // Use contentPaletteBorder for consistency
                     {
-                        graphics.FillRectangle(br, rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset, rowBounds.Bottom - 2, gridwidth + 1, 2);
+                        graphics.FillRectangle(br, contentBounds.Left, rowBounds.Bottom - 2, contentBounds.Width + 1, 2);
                     }
                 }
 
-                //Draw right vertical bar 
-                if (grid.CellBorderStyle is DataGridViewCellBorderStyle.SingleVertical or DataGridViewCellBorderStyle.Single)
-                {
-                    using (SolidBrush br = new(paletteBorder.GetBorderColor1(state)))
-                    {
-                        graphics.FillRectangle(br, rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + gridwidth, rowBounds.Top, 1, rowBounds.Height);
-                    }
-                }
+                // The right vertical bar for the content area's right edge
+                // This was already working correctly as it's at contentBounds.Right
+                // if (grid.CellBorderStyle is DataGridViewCellBorderStyle.SingleVertical or DataGridViewCellBorderStyle.Single)
+                // {
+                //     using (SolidBrush br = new(contentPaletteBorder.GetBorderColor1(state)))
+                //     {
+                //         graphics.FillRectangle(br, contentBounds.Right, rowBounds.Top, 1, rowBounds.Height);
+                //     }
+                // }
 
-                //Set the icon and lines according to the renderer
+
+                // Set the icon and lines according to the renderer
+                int iconX = contentBounds.Left + 4 + groupLevelIndentation;
+                int iconY = rowBounds.Bottom - 18;
+
                 if (_group.Collapsed)
                 {
                     if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010 || KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
                     {
-                        graphics.DrawImage(GenericImageResources.CollapseIcon2010, rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + 4 + groupLevelIndentation, rowBounds.Bottom - 18, 11, 11);
+                        graphics.DrawImage(GenericImageResources.CollapseIcon2010, iconX, iconY, 11, 11);
                     }
                     else
                     {
-                        graphics.DrawImage(GenericImageResources.ExpandIcon, rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + 4 + groupLevelIndentation, rowBounds.Bottom - 18, 11, 11);
+                        graphics.DrawImage(GenericImageResources.ExpandIcon, iconX, iconY, 11, 11);
                     }
                 }
                 else
                 {
                     if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010 || KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
                     {
-                        graphics.DrawImage(GenericImageResources.ExpandIcon2010, rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + 4 + groupLevelIndentation, rowBounds.Bottom - 18, 11, 11);
+                        graphics.DrawImage(GenericImageResources.ExpandIcon2010, iconX, iconY, 11, 11);
                     }
                     else
                     {
-                        graphics.DrawImage(GenericImageResources.CollapseIcon, rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + 4 + groupLevelIndentation, rowBounds.Bottom - 18, 11, 11);
+                        graphics.DrawImage(GenericImageResources.CollapseIcon, iconX, iconY, 11, 11);
                     }
                 }
 
@@ -356,39 +411,54 @@ namespace Krypton.Toolkit
                 int imageoffset = 0;
                 if (_group.GroupImage != null)
                 {
-                    if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010 || KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
-                    {
-                        graphics.DrawImage(_group.GroupImage, rowHeadersWidth - grid.HorizontalScrollingOffset + GlobalStaticValues.ImageOffsetWidth + groupLevelIndentation, rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight, GlobalStaticValues.GroupImageSide, GlobalStaticValues.GroupImageSide);
-                        imageoffset = GlobalStaticValues.ImageOffsetWidth;
-                    }
-                    else
-                    {
-                        graphics.DrawImage(_group.GroupImage, rowHeadersWidth - grid.HorizontalScrollingOffset + GlobalStaticValues.ImageOffsetWidth + groupLevelIndentation, rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight, GlobalStaticValues.GroupImageSide, GlobalStaticValues.GroupImageSide);
-                        imageoffset = GlobalStaticValues.ImageOffsetWidth;
-                    }
+                    int imageX = contentBounds.Left + GlobalStaticValues.ImageOffsetWidth + groupLevelIndentation;
+                    int imageY = (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013) ?
+                                    rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight :
+                                    rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight;
+
+                    graphics.DrawImage(_group.GroupImage, imageX, imageY, GlobalStaticValues.GroupImageSide, GlobalStaticValues.GroupImageSide);
+                    imageoffset = GlobalStaticValues.GroupImageSide;
                 }
 
-                //Draw text, using the current grid font
-                int offsetText = rowHeadersWidth - grid.HorizontalScrollingOffset + 18 + imageoffset + groupLevelIndentation;
+                // Draw text, using the current grid font
+                int offsetText = contentBounds.Left + 18 + imageoffset + groupLevelIndentation;
+                int textRectWidth = contentBounds.Right - offsetText;
+
                 if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
                 {
-                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state), new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight, rowBounds.Width - offsetText, rowBounds.Height), grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
-                                 TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
+                    // This line already uses _group.Text, which will now contain aggregated values
+                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state),
+                        new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight, textRectWidth, rowBounds.Height),
+                        grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
+                        TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
                 }
                 else
                 {
-                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state), new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight, rowBounds.Width - offsetText, rowBounds.Height), grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
-                                   TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
+                    // This line already uses _group.Text, which will now contain aggregated values
+                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state),
+                        new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight, textRectWidth, rowBounds.Height),
+                        grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
+                        TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
                 }
 
-                ////Debug Hits
-                ////ExpandCollaspe icon
-                //graphics.DrawRectangle(new Pen(Color.Red), new Rectangle(rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + 4 + group.Level * 15, rowBounds.Bottom - 18, 11, 11));
-                ////Image
-                //if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
-                //    graphics.DrawRectangle(new Pen(Color.Blue), new Rectangle(rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + StaticValues._ImageOffsetwidth + groupLevelIndentation, rowBounds.Bottom - StaticValues._2013OffsetHeight, StaticValues._groupImageSide, StaticValues._groupImageSide));
-                //else
-                //    graphics.DrawRectangle(new Pen(Color.Blue), new Rectangle(rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + StaticValues._ImageOffsetwidth + groupLevelIndentation, rowBounds.Bottom - StaticValues._defaultOffsetHeight, StaticValues._groupImageSide, StaticValues._groupImageSide));
+                /*//Draw text, using the current grid font
+                int offsetText = contentBounds.Left + 18 + imageoffset + groupLevelIndentation;
+                int textRectWidth = contentBounds.Right - offsetText;
+
+                if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
+                {
+                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state),
+                        new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight, textRectWidth, rowBounds.Height),
+                        grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
+                        TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
+                }
+                else
+                {
+                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state),
+                        new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight, textRectWidth, rowBounds.Height),
+                        grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
+                        TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
+                }*/
             }
             else
             {

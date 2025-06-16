@@ -17,18 +17,15 @@ namespace Krypton.Toolkit
     {
         #region Instance Fields
 
-        private bool _enableEmbossEffect;
-        private bool _animateGradientEffect;
-        private bool _enableKnobGradient;
-        private bool _onlyShowColorOnKnob;
-        private bool _showText;
-        private float _gradientStartIntensity;
-        private float _gradientEndIntensity;
-        private LinearGradientMode _gradientDirection;
-        private Color _onColor;
-        private Color _offColor;
-        private int _cornerRadius;
-        private bool _useThemeColors;
+        private bool _checked;
+
+        private TintValues? _tintValues;
+
+        private ToggleSwitchColorValues? _toggleSwitchColorValues;
+
+        private ToggleSwitchGradientValues? _gradientValues;
+
+        private ToggleSwitchMiscellaneousValues? _toggleSwitchMiscellaneousValues;
 
         #endregion
 
@@ -37,18 +34,7 @@ namespace Krypton.Toolkit
         /// <summary>Initializes a new instance of the <see cref="ToggleSwitchValues" /> class.</summary>
         public ToggleSwitchValues()
         {
-            _enableEmbossEffect = false;
-            _animateGradientEffect = false;
-            _enableKnobGradient = false;
-            _onlyShowColorOnKnob = true;
-            _showText = true;
-            _gradientStartIntensity = 0.8f;
-            _gradientEndIntensity = 0.6f;
-            _gradientDirection = LinearGradientMode.ForwardDiagonal;
-            _onColor = Color.Green;
-            _offColor = Color.Red;
-            _cornerRadius = 10;
-            _useThemeColors = true;
+            
         }
 
         #endregion
@@ -64,227 +50,136 @@ namespace Krypton.Toolkit
 
         /// <summary>Called when [property changed].</summary>
         /// <param name="propertyName">Name of the property.</param>
-        protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        /// <summary>Sets the field.</summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="field">The field.</param>
+        /// <param name="value">The value.</param>
+        /// <param name="propertyName">Name of the property.</param>
+        /// <returns></returns>
+        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value))
+            {
+                return false;
+            }
+
+            field = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
 
         #endregion
 
         #region Public
 
-        /// <summary>Gets or sets a value indicating whether [enable emboss effect].</summary>
-        /// <value><c>true</c> if [enable emboss effect]; otherwise, <c>false</c>.</value>
-        [Category("Appearance")]
-        [Description("Indicates whether the emboss effect should be applied.")]
+        /// <summary>Gets or sets a value indicating whether this instance is checked.</summary>
+        [Description("Specifies the checked state of the switch.")]
+        [Category("Behavior")]
         [DefaultValue(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public bool EnableEmbossEffect
+        public bool Checked
         {
-            get => _enableEmbossEffect;
+            get => _checked;
+            set => SetField(ref _checked, value);
+        }
+
+        /// <summary>Gets or sets the tint values.</summary>
+        [Category("Appearance")]
+        [Description("Specifies the tint values for the switch.")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public TintValues TintValues
+        {
+            get => _tintValues ??= new TintValues();
+
             set
             {
-                if (_enableEmbossEffect != value)
+                if (_tintValues != value)
                 {
-                    _enableEmbossEffect = value;
-                    OnPropertyChanged(nameof(EnableEmbossEffect));
+                    if (_tintValues != null)
+                    {
+                        _tintValues.PropertyChanged -= OnTintValuesPropertiesChanged;
+                    }
+
+                    _tintValues = value ?? new TintValues();
+
+                    _tintValues.PropertyChanged += OnTintValuesPropertiesChanged;
+
+                    OnPropertyChanged(nameof(TintValues));
                 }
             }
         }
 
+        private bool ShouldSerializeTintValues() => !TintValues.IsDefault;
+
+        public void ResetTintValues() => TintValues.Reset();
+
+        /// <summary>Gets or sets the color values.</summary>
         [Category("Appearance")]
-        [Description("Indicates whether the gradient effect should be animated.")]
-        [DefaultValue(false)]
-        public bool AnimateGradientEffect
+        [Description("Specifies the color values for the switch.")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public ToggleSwitchColorValues ColorValues
         {
-            get => _animateGradientEffect;
+            get => _toggleSwitchColorValues ??= new ToggleSwitchColorValues();
             set
             {
-                if (_animateGradientEffect != value)
+                if (_toggleSwitchColorValues != value)
                 {
-                    _animateGradientEffect = value;
-                    OnPropertyChanged(nameof(AnimateGradientEffect));
+                    if (_toggleSwitchColorValues != null)
+                    {
+                        _toggleSwitchColorValues.PropertyChanged -= OnColorValuesPropertiesChanged;
+                    }
+                    _toggleSwitchColorValues = value ?? new ToggleSwitchColorValues();
+                    _toggleSwitchColorValues.PropertyChanged += OnColorValuesPropertiesChanged;
+
+                    OnPropertyChanged(nameof(ColorValues));
                 }
             }
         }
 
-        /// <summary>Gets or sets a value indicating whether [enable knob gradient].</summary>
-        /// <value><c>true</c> if [enable knob gradient]; otherwise, <c>false</c>.</value>
+        /// <summary>Gets or sets the gradient values.</summary>
         [Category("Appearance")]
-        [Description("Indicates whether the knob should have a gradient effect.")]
-        [DefaultValue(false)]
-        public bool EnableKnobGradient
+        [Description("Specifies the gradient values for the knob.")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public ToggleSwitchGradientValues GradientValues
         {
-            get => _enableKnobGradient;
+            get => _gradientValues ??= new ToggleSwitchGradientValues();
+
             set
             {
-                if (_enableKnobGradient != value)
+                if (_gradientValues != value)
                 {
-                    _enableKnobGradient = value;
-                    OnPropertyChanged(nameof(EnableKnobGradient));
+                    if (_gradientValues != null)
+                    {
+                        _gradientValues.PropertyChanged -= OnGradientValuesPropertiesChanged;
+                    }
+                    _gradientValues = value ?? new ToggleSwitchGradientValues();
+                    _gradientValues.PropertyChanged += OnGradientValuesPropertiesChanged;
+
+                    OnPropertyChanged(nameof(GradientValues));
                 }
             }
         }
 
-        /// <summary>Gets or sets a value indicating whether [show color only on knob].</summary>
-        [Category("Appearance")]
-        [Description("Indicates whether the color should be only shown on the knob.")]
-        [DefaultValue(true)]
-        public bool OnlyShowColorOnKnob
+        /// <summary>Gets or sets the miscellaneous values.</summary>
+        [Category("Miscellaneous")]
+        [Description("Specifies the miscellaneous values for the switch.")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public ToggleSwitchMiscellaneousValues MiscellaneousValues
         {
-            get => _onlyShowColorOnKnob;
+            get => _toggleSwitchMiscellaneousValues ??= new ToggleSwitchMiscellaneousValues();
             set
             {
-                if (_onlyShowColorOnKnob != value)
+                if (_toggleSwitchMiscellaneousValues != value)
                 {
-                    _onlyShowColorOnKnob = value;
-                    OnPropertyChanged(nameof(OnlyShowColorOnKnob));
-                }
-            }
-        }
-
-        /// <summary>Gets or sets a value indicating whether [show text].</summary>
-        [Category("Appearance")]
-        [Description("Indicates whether the text should be shown.")]
-        [DefaultValue(true)]
-        public bool ShowText
-        {
-            get => _showText;
-            set
-            {
-                if (_showText != value)
-                {
-                    _showText = value;
-                    OnPropertyChanged(nameof(ShowText));
-                }
-            }
-        }
-
-        /// <summary>Gets or sets the gradient start intensity.</summary>
-        /// <value>The gradient start intensity.</value>
-        [Category("Appearance")]
-        [Description("Specifies the gradient intensity for the knob.")]
-        [DefaultValue(0.8f)]
-        public float GradientStartIntensity
-        {
-            get => _gradientStartIntensity;
-            set
-            {
-                if (_gradientStartIntensity != value)
-                {
-                    _gradientStartIntensity = value;
-                    OnPropertyChanged(nameof(GradientStartIntensity));
-                }
-            }
-        }
-
-        /// <summary>Gets or sets the gradient end intensity.</summary>
-        /// <value>The gradient end intensity.</value>
-        [Category("Appearance")]
-        [Description("Specifies the gradient intensity for the knob.")]
-        [DefaultValue(0.6f)]
-        public float GradientEndIntensity
-        {
-            get => _gradientEndIntensity;
-            set
-            {
-                if (_gradientEndIntensity != value)
-                {
-                    _gradientEndIntensity = value;
-                    OnPropertyChanged(nameof(GradientEndIntensity));
-                }
-            }
-        }
-
-        /// <summary>Gets or sets the gradient direction.</summary>
-        /// <value>The gradient direction.</value>
-        [Category("Appearance")]
-        [Description("Specifies the direction of the gradient.")]
-        [DefaultValue(LinearGradientMode.ForwardDiagonal)]
-        public LinearGradientMode GradientDirection
-        {
-            get => _gradientDirection;
-            set
-            {
-                if (_gradientDirection != value)
-                {
-                    _gradientDirection = value;
-                    OnPropertyChanged(nameof(GradientDirection));
-                }
-            }
-        }
-
-        /// <summary>Gets or sets the color when on.</summary>
-        /// <value>The color when on.</value>
-        [Category("Appearance")]
-        [Description("Specifies the color when the switch is on.")]
-        [DefaultValue(typeof(Color), "Green")]
-        public Color OnColor
-        {
-            get => _onColor;
-            set
-            {
-                if (_onColor != value)
-                {
-                    _onColor = value;
-                    OnPropertyChanged(nameof(OnColor));
-                }
-            }
-        }
-
-        /// <summary>Gets or sets the color when off.</summary>
-        /// <value>The color when off.</value>
-        [Category("Appearance")]
-        [Description("Specifies the color when the switch is off.")]
-        [DefaultValue(typeof(Color), "Red")]
-        public Color OffColor
-        {
-            get => _offColor;
-            set
-            {
-                if (_offColor != value)
-                {
-                    _offColor = value;
-                    OnPropertyChanged(nameof(OffColor));
-                }
-            }
-        }
-
-        [Category("Appearance")]
-        [Description("Specifies the corner radius of the switch.")]
-        [DefaultValue(10)]
-        public int CornerRadius
-        {
-            get => _cornerRadius;
-            set
-            {
-                if (value < 1)
-                {
-                    value = 1;
-                }
-
-                if (value > 130)
-                {
-                    value = 130;
-                }
-
-                if (_cornerRadius != value)
-                {
-                    _cornerRadius = value;
-                    OnPropertyChanged(nameof(CornerRadius));
-                }
-            }
-        }
-
-        [Category("Appearance")]
-        [Description("Indicates whether to use theme colors.")]
-        [DefaultValue(true)]
-        public bool UseThemeColors
-        {
-            get => _useThemeColors;
-            set
-            {
-                if (_useThemeColors != value)
-                {
-                    _useThemeColors = value;
-                    OnPropertyChanged(nameof(UseThemeColors));
+                    if (_toggleSwitchMiscellaneousValues != null)
+                    {
+                        _toggleSwitchMiscellaneousValues.PropertyChanged -= OnColorValuesPropertiesChanged;
+                    }
+                    _toggleSwitchMiscellaneousValues = value ?? new ToggleSwitchMiscellaneousValues();
+                    _toggleSwitchMiscellaneousValues.PropertyChanged += OnColorValuesPropertiesChanged;
+                    OnPropertyChanged(nameof(MiscellaneousValues));
                 }
             }
         }
@@ -296,10 +191,10 @@ namespace Krypton.Toolkit
         /// <summary>Gets a value indicating whether this instance is default.</summary>
         /// <value><c>true</c> if this instance is default; otherwise, <c>false</c>.</value>
         [Browsable(false)]
-        public bool IsDefault => !_enableEmbossEffect && !_enableKnobGradient && _gradientStartIntensity.Equals(0.8f) &&
-                                 _gradientEndIntensity.Equals(0.6f) &&
-                                 _gradientDirection == LinearGradientMode.ForwardDiagonal && _onColor == Color.Green &&
-                                 _offColor == Color.Red && _cornerRadius == 10 && _useThemeColors;
+        public bool IsDefault => !_checked && ColorValues.IsDefault &&
+                                 GradientValues.IsDefault &&
+                                 MiscellaneousValues.IsDefault &&
+                                 TintValues.IsDefault;
 
         #endregion
 
@@ -308,24 +203,40 @@ namespace Krypton.Toolkit
         /// <summary>Resets the values.</summary>
         public void Reset()
         {
-            EnableEmbossEffect = false;
-            AnimateGradientEffect = false;
-            EnableKnobGradient = false;
-            OnlyShowColorOnKnob = true;
-            ShowText = true;
-            GradientStartIntensity = 0.8f;
-            GradientEndIntensity = 0.6f;
-            GradientDirection = LinearGradientMode.ForwardDiagonal;
-            OnColor = Color.Green;
-            OffColor = Color.Red;
-            CornerRadius = 10;
-            UseThemeColors = true;
+            _checked = false;
+            ColorValues.Reset();
+            TintValues.Reset();
+            GradientValues.Reset();
+            MiscellaneousValues.Reset();
         }
 
         #endregion
 
+        #region Implementation
+
+        private void OnColorValuesPropertiesChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(ColorValues));
+        }
+
+        private void OnTintValuesPropertiesChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(TintValues));
+        }
+
+        private void OnGradientValuesPropertiesChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(GradientValues));
+        }
+
+        #endregion
+
+        #region Public Overrides
+
         /// <inheritdoc />
         public override string ToString() => !IsDefault ? "Modified" : GlobalStaticValues.DEFAULT_EMPTY_STRING;
+
+        #endregion
     }
 
 }

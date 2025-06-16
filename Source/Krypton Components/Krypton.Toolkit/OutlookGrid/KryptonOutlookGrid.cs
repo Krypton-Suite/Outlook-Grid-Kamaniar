@@ -52,6 +52,7 @@ namespace Krypton.Toolkit
 
         private OutlookGridGroupCollection _groupCollection;     // List of Groups (of rows)
         private List<OutlookGridRow> _internalRows;              // List of Rows in order to keep them as is (without grouping,...)
+        private List<OutlookGridRow> _originalRows;              // List of Rows in order to keep them as is (without grouping, filter,...)
         private readonly OutlookGridColumnCollection _internalColumns;    // List of columns in order to know if sorted, Grouped, types,...
         private int _previousGroupRowSelected = -1; //Useful to allow the selection of a group row or not when on mouse down 
 
@@ -80,6 +81,13 @@ namespace Krypton.Toolkit
         private KryptonContextMenuItem _menuConditionalFormatting;
         private int _colSelected = 1;         //for menu
         private const int FORMATTING_BAR_SOLID_GRADIENT_SEP_INDEX = 3;
+
+        // NEW: Aggregation-specific menu items
+        private KryptonContextMenuItem _menuAggregationNumeric;
+        private KryptonContextMenuItem _menuAggregationNonNumeric;
+        private KryptonContextMenuItem _menuFilter;
+        private KryptonContextMenuItem _menuClearFilter;
+
 
         //For the Drag and drop of columns
         private Rectangle _dragDropRectangle;
@@ -142,6 +150,7 @@ namespace Krypton.Toolkit
             base.RowTemplate = new OutlookGridRow();
             _groupCollection = new OutlookGridGroupCollection(null);
             _internalRows = new List<OutlookGridRow>();
+            _originalRows = new List<OutlookGridRow>();
             _internalColumns = new OutlookGridColumnCollection();
             _fillMode = GridFillMode.GroupsOnly;
 
@@ -1555,15 +1564,21 @@ namespace Krypton.Toolkit
         /// <param name="groupIndex">The column's position in grouping and at which level.</param>
         /// <param name="sortIndex">the column's position among sorted columns.</param>
         /// <param name="comparer">The comparer if needed</param>
-        public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer)
-        {
+        public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer) =>
             AddInternalColumn(new OutlookGridColumn(col, group, sortDirection, groupIndex, sortIndex, comparer));
-            //internalColumns.Add(new OutlookGridColumn(col, group, sortDirection, groupIndex, sortIndex));
-            ////Already reflect the SortOrder on the column
-            //col.HeaderCell.SortGlyphDirection = sortDirection;
-            //if (this._hideColumnOnGrouping && groupIndex > -1 && group.AllowHiddenWhenGrouped)
-            //    col.Visible = false;
-        }
+
+        /// <summary>
+        /// Add a column for internal uses of the OutlookGrid. The column must already exists in the datagridview. Do this *BEFORE* using the grid (sorting and grouping, filling,...)
+        /// </summary>
+        /// <param name="col">The DataGridViewColumn.</param>
+        /// <param name="group">The group type for the column.</param>
+        /// <param name="sortDirection">The sort direction.</param>
+        /// <param name="groupIndex">The column's position in grouping and at which level.</param>
+        /// <param name="sortIndex">the column's position among sorted columns.</param>
+        /// <param name="comparer">The comparer if needed</param>
+        /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
+        public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, AggregationType aggregationType) =>
+            AddInternalColumn(new OutlookGridColumn(col, group, sortDirection, groupIndex, sortIndex, comparer, aggregationType));
 
         /// <summary>
         /// Add a column for internal uses of the OutlookGrid. The column must already exists in the datagridview. Do this *BEFORE* using the grid (sorting and grouping, filling,...)
@@ -1575,6 +1590,18 @@ namespace Krypton.Toolkit
         /// <param name="sortIndex">the column's position among sorted columns.</param>
         public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex) =>
             AddInternalColumn(new OutlookGridColumn(col, group, sortDirection, groupIndex, sortIndex, null));
+
+        /// <summary>
+        /// Add a column for internal uses of the OutlookGrid. The column must already exists in the datagridview. Do this *BEFORE* using the grid (sorting and grouping, filling,...)
+        /// </summary>
+        /// <param name="col">The DataGridViewColumn.</param>
+        /// <param name="group">The group type for the column.</param>
+        /// <param name="sortDirection">The sort direction.</param>
+        /// <param name="groupIndex">The column's position in grouping and at which level.</param>
+        /// <param name="sortIndex">the column's position among sorted columns.</param>
+        /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
+        public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, AggregationType aggregationType) =>
+            AddInternalColumn(new OutlookGridColumn(col, group, sortDirection, groupIndex, sortIndex, null, aggregationType));
 
         /// <summary>
         /// Add a column for internal uses of the OutlookGrid. The column must already exists in the datagridview. Do this *BEFORE* using the grid (sorting and grouping, filling,...)
@@ -1902,34 +1929,14 @@ namespace Krypton.Toolkit
         /// <param name="columnIndex">The column used by the context menu.</param>
         private void ShowColumnHeaderContextMenu(int columnIndex)
         {
+            // Find the OutlookGridColumn associated with the clicked DataGridViewColumn
             OutlookGridColumn? col = _internalColumns.FindFromColumnIndex(columnIndex);
+            DataGridViewColumn? clickedDgvColumn = (col != null) ? col.DataGridViewColumn : null;
+
             // Create menu items the first time they are needed
             if (_menuItems == null)
             {
-                // Create individual items
-                /*_menuSortAscending = new KryptonContextMenuItem(LanguageManager.Instance.GetString("SORTASCENDING"), Resources.OutlookGridImageResources.sort_az_ascending2, OnColumnSortAscending);
-                _menuSortDescending = new KryptonContextMenuItem(LanguageManager.Instance.GetString("SORTDESCENDING"), Resources.OutlookGridImageResources.sort_az_descending2, new EventHandler(OnColumnSortDescending));
-                _menuClearSorting = new KryptonContextMenuItem(LanguageManager.Instance.GetString("CLEARSORTING"), Resources.OutlookGridImageResources.sort_up_down_delete_16, new EventHandler(OnColumnClearSorting));
-                _menuSeparator1 = new KryptonContextMenuSeparator();
-                _menuExpand = new KryptonContextMenuItem(LanguageManager.Instance.GetString("EXPAND"), Resources.OutlookGridImageResources.element_plus_16, new EventHandler(OnGroupExpand));
-                _menuCollapse = new KryptonContextMenuItem(LanguageManager.Instance.GetString("COLLAPSE"), Resources.OutlookGridImageResources.element_minus_16, new EventHandler(OnGroupCollapse));
-                _menuSeparator4 = new KryptonContextMenuSeparator();
-                _menuGroupByThisColumn = new KryptonContextMenuItem(LanguageManager.Instance.GetString("GROUP"), Resources.OutlookGridImageResources.element, new EventHandler(OnGroupByThisColumn));
-                _menuUngroupByThisColumn = new KryptonContextMenuItem(LanguageManager.Instance.GetString("UNGROUP"), Resources.OutlookGridImageResources.element_delete, new EventHandler(OnUnGroupByThisColumn));
-                _menuShowGroupBox = new KryptonContextMenuItem(LanguageManager.Instance.GetString("SHOWGROUPBOX"), null, new EventHandler(OnShowGroupBox));
-                _menuHideGroupBox = new KryptonContextMenuItem(LanguageManager.Instance.GetString("HIDEGROUPBOX"), null, new EventHandler(OnHideGroupBox));
-                _menuSeparator2 = new KryptonContextMenuSeparator();
-                _menuBestFitColumn = new KryptonContextMenuItem(LanguageManager.Instance.GetString("BESTFIT"), null, new EventHandler(OnBestFitColumn));
-                _menuBestFitAllColumns = new KryptonContextMenuItem(LanguageManager.Instance.GetString("BESTFITALL"), Resources.OutlookGridImageResources.fit_to_size, new EventHandler(OnBestFitAllColumns));
-                _menuSeparator3 = new KryptonContextMenuSeparator();
-                _menuVisibleColumns = new KryptonContextMenuItem(LanguageManager.Instance.GetString("COLUMNS"), Resources.OutlookGridImageResources.table2_selection_column, null);
-                _menuGroupInterval = new KryptonContextMenuItem(LanguageManager.Instance.GetString("GROUPINTERVAL"));
-                _menuSortBySummary = new KryptonContextMenuItem(LanguageManager.Instance.GetString("SORTBYSUMMARYCOUNT"), null, new EventHandler(OnSortBySummary));
-                _menuSortBySummary.CheckOnClick = true;
-                _menuSeparator5 = new KryptonContextMenuSeparator();
-                _menuConditionalFormatting = new KryptonContextMenuItem(LanguageManager.Instance.GetString("CONDITIONALFORMATTING"), Resources.OutlookGridImageResources.table_conditional_16, null);*/
-
-                #region Localisation
+                #region Localisation (Your existing menu item creation)
 
                 _menuSortAscending = new KryptonContextMenuItem(KryptonManager.Strings.OutlookGridStrings.SortAscending, SortingImageResources.sort_az_ascending2, OnColumnSortAscending);
                 _menuSortDescending = new KryptonContextMenuItem(KryptonManager.Strings.OutlookGridStrings.SortDescending, SortingImageResources.sort_az_descending2, OnColumnSortDescending);
@@ -1978,12 +1985,15 @@ namespace Krypton.Toolkit
                     itCheckbox = new KryptonContextMenuCheckBox(Columns[i].HeaderText);
                     itCheckbox.Checked = Columns[i].Visible;
                     itCheckbox.Tag = Columns[i].Index;
+                    itCheckbox.Visible = _internalColumns[Columns[i].Name]!.AvailableInContextMenu;
                     itCheckbox.CheckedChanged += OnColumnVisibleCheckedChanged;
                     arrayCols[i] = itCheckbox;
                 }
                 _menuVisibleColumns.Items.AddRange(arrayCols!);
 
-                //Conditional formatting
+                #region Conditional formatting
+
+                //Conditional formatting (your existing complex setup)
                 ImageList imgListFormatting = new();
                 imgListFormatting.ColorDepth = ColorDepth.Depth32Bit;
                 imgListFormatting.ImageSize = new Size(32, 32);
@@ -2007,7 +2017,6 @@ namespace Krypton.Toolkit
                 tmpTag.Add(new ConditionalFormatting(EnumConditionalFormatType.Bar, new BarParams(Color.FromArgb(95, 173, 123), true)));
                 imgListFormatting.Images.Add(DataBarImageResources.Databar_gradient_red_32);
                 tmpTag.Add(new ConditionalFormatting(EnumConditionalFormatType.Bar, new BarParams(Color.FromArgb(248, 108, 103), true)));
-                imgListFormatting.Images.Add(DataBarImageResources.Databar_gradient_yellow_32);
                 tmpTag.Add(new ConditionalFormatting(EnumConditionalFormatType.Bar, new BarParams(Color.FromArgb(255, 185, 56), true)));
                 imgListFormatting.Images.Add(DataBarImageResources.Databar_gradient_violet_32);
                 tmpTag.Add(new ConditionalFormatting(EnumConditionalFormatType.Bar, new BarParams(Color.FromArgb(185, 56, 255), true)));
@@ -2055,7 +2064,7 @@ namespace Krypton.Toolkit
 
                 it = null;
                 names = Enum.GetNames(typeof(EnumConditionalFormatType));
-                arrayOptions = new KryptonContextMenuItemBase[names.Length + 2];
+                arrayOptions = new KryptonContextMenuItemBase[names.Length + 2]; // +2 for separator and Clear Rules
                 for (int i = 0; i < names.Length; i++)
                 {
                     it = new KryptonContextMenuItem(OutlookGridLanguageManager.Instance.GetString(names[i]));
@@ -2065,7 +2074,6 @@ namespace Krypton.Toolkit
                     {
                         it.Image = DataBarImageResources.databar_generic_16;
 
-                        //Solid
                         KryptonContextMenuHeading kFormattingBarHeadingSolid = new();
                         kFormattingBarHeadingSolid.Text = KryptonManager.Strings.OutlookGridStrings.SolidFill;
                         KryptonContextMenuImageSelect kFormattingBarImgSelectSolid = new();
@@ -2076,7 +2084,6 @@ namespace Krypton.Toolkit
                         kFormattingBarImgSelectSolid.Tag = tmpTag;
                         kFormattingBarImgSelectSolid.Click += OnConditionalFormattingClick;
 
-                        //Gradient
                         KryptonContextMenuHeading kFormattingBarHeadingGradient = new();
                         kFormattingBarHeadingGradient.Text = KryptonManager.Strings.OutlookGridStrings.GradientFill;
                         KryptonContextMenuImageSelect kFormattingBarImgSelectGradient = new();
@@ -2087,7 +2094,6 @@ namespace Krypton.Toolkit
                         kFormattingBarImgSelectGradient.Tag = tmpTag;
                         kFormattingBarImgSelectGradient.Click += OnConditionalFormattingClick;
 
-                        //Custom
                         KryptonContextMenuHeading kFormattingBarHeadingOther = new();
                         kFormattingBarHeadingOther.Text = KryptonManager.Strings.OutlookGridStrings.Other;
                         KryptonContextMenuItem? it2;
@@ -2098,14 +2104,13 @@ namespace Krypton.Toolkit
 
                         KryptonContextMenuItems bars = new(new KryptonContextMenuItemBase[] { it2 });
 
-                        //Menu construction
                         it.Items.AddRange(new KryptonContextMenuItemBase[] {
-                        kFormattingBarHeadingSolid,
-                        kFormattingBarImgSelectSolid,
-                        kFormattingBarHeadingGradient,
-                        kFormattingBarImgSelectGradient,
-                        kFormattingBarHeadingOther,
-                        bars
+                            kFormattingBarHeadingSolid,
+                            kFormattingBarImgSelectSolid,
+                            kFormattingBarHeadingGradient,
+                            kFormattingBarImgSelectGradient,
+                            kFormattingBarHeadingOther,
+                            bars
                         });
                     }
                     else if (names[i] == EnumConditionalFormatType.TwoColorsRange.ToString())
@@ -2176,54 +2181,95 @@ namespace Krypton.Toolkit
                 }
                 KryptonContextMenuItems conditionalFormattingItems = new(arrayOptions);
                 _menuConditionalFormatting.Items.Add(conditionalFormattingItems);
+                #endregion Conditional formatting
+
+                // --- NEW: AGGREGATION MENU ITEM CREATION (Done once) ---
+                // Create a sub-items collection for aggregations
+                KryptonContextMenuItem aggNone = new KryptonContextMenuItem(AggregationType.None.ToString(), null, OnAggregationChange);
+                aggNone.Tag = AggregationType.None;
+                KryptonContextMenuItem aggSum = new KryptonContextMenuItem(AggregationType.Sum.ToString(), null, OnAggregationChange);
+                aggSum.Tag = AggregationType.Sum;
+                KryptonContextMenuItem aggCount = new KryptonContextMenuItem(AggregationType.Count.ToString(), null, OnAggregationChange);
+                aggCount.Tag = AggregationType.Count;
+                KryptonContextMenuItem aggMin = new KryptonContextMenuItem(AggregationType.Min.ToString(), null, OnAggregationChange);
+                aggMin.Tag = AggregationType.Min;
+                KryptonContextMenuItem aggMax = new KryptonContextMenuItem(AggregationType.Max.ToString(), null, OnAggregationChange);
+                aggMax.Tag = AggregationType.Max;
+                KryptonContextMenuItem aggAverage = new KryptonContextMenuItem(AggregationType.Average.ToString(), null, OnAggregationChange);
+                aggAverage.Tag = AggregationType.Average;
+
+                _menuAggregationNumeric = new KryptonContextMenuItem("Aggregation", null, null);
+                _menuAggregationNumeric.Items.AddRange(new KryptonContextMenuItemBase[] { aggNone, aggSum, aggCount, aggMin, aggMax, aggAverage });
+                _menuAggregationNumeric.Visible = clickedDgvColumn.IsNumericColumn();
+
+                _menuAggregationNonNumeric = new KryptonContextMenuItem("Aggregation", null, null);
+                _menuAggregationNonNumeric.Items.AddRange(new KryptonContextMenuItemBase[] { aggNone, aggCount, aggMin, aggMax });
+                _menuAggregationNonNumeric.Visible = !_menuAggregationNumeric.Visible;
+
+
+                //var filterMenu = ShowColumnFilterContextMenu();
+                _menuFilter = new KryptonContextMenuItem("Filter", null, OnFilterClick);
+                _menuFilter.Visible = ShowColumnFilter;
+                _menuClearFilter = new KryptonContextMenuItem("Clear Filter", null, OnClearFilterClick);
+                _menuClearFilter.Visible = col!.Filters != null;
+                //filterMenu.Items.Add(xx);
 
                 //Add items inside an items collection (apart from separator1 which is only added if required)
-                _menuItems = new KryptonContextMenuItems(new KryptonContextMenuItemBase[] { _menuSortAscending,
-                                                                                            _menuSortDescending,
-                                                                                            _menuSortBySummary,
-                                                                                            _menuClearSorting,
-                                                                                            _menuSeparator1,
-                                                                                            _menuExpand,
-                                                                                            _menuCollapse,
-                                                                                            _menuSeparator4,
-                                                                                            _menuGroupByThisColumn,
-                                                                                            _menuGroupInterval,
-                                                                                            _menuUngroupByThisColumn,
-                                                                                            _menuShowGroupBox,
-                                                                                            _menuHideGroupBox,
-                                                                                            _menuSeparator2,
-                                                                                            _menuBestFitColumn,
-                                                                                            _menuBestFitAllColumns,
-                                                                                            _menuSeparator3,
-                                                                                            _menuVisibleColumns,
-                                                                                            _menuSeparator5,
-                                                                                            _menuConditionalFormatting});
+                _menuItems = new KryptonContextMenuItems(new KryptonContextMenuItemBase[] {
+                    _menuSortAscending,
+                    _menuSortDescending,
+                    _menuSortBySummary,
+                    _menuClearSorting,
+                    _menuSeparator1,
+                    _menuExpand,
+                    _menuCollapse,
+                    _menuSeparator4,
+                    _menuGroupByThisColumn,
+                    _menuGroupInterval,
+                    _menuUngroupByThisColumn,
+                    _menuShowGroupBox,
+                    _menuHideGroupBox,
+                    _menuSeparator2,
+                    _menuBestFitColumn,
+                    _menuBestFitAllColumns,
+                    _menuSeparator3,
+                    _menuVisibleColumns,
+                    _menuSeparator5,
+                    _menuConditionalFormatting,
+                    // Add aggregation items here at the end of the main collection
+                    //new KryptonContextMenuSeparator(),
+                    _menuAggregationNumeric,
+                    _menuAggregationNonNumeric,
+                    _menuFilter,
+                    _menuClearFilter
+                });
             }
 
             // Ensure we have a krypton context menu if not already present
             _contextMenu ??= new KryptonContextMenu();
 
-            // Update the individual menu options
-            if (col != null)
+            // --- Update the individual menu options based on the clicked column ---
+            // This part happens every time the context menu is shown, adjusting visibility and checked states.
+            if (col != null && clickedDgvColumn != null)
             {
-                _menuSortAscending.Visible = col.DataGridViewColumn!.SortMode != DataGridViewColumnSortMode.NotSortable;
-                _menuSortAscending.Checked = col.SortDirection == SortOrder.Ascending ? true : false;
-                _menuSortDescending.Checked = col.SortDirection == SortOrder.Descending ? true : false;
-                _menuSortDescending.Visible = col.DataGridViewColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
-                _menuSortBySummary.Visible = col.IsGrouped && col.GroupingType != null;
+                _menuSortAscending!.Visible = clickedDgvColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
+                _menuSortAscending.Checked = col.SortDirection == SortOrder.Ascending;
+                _menuSortDescending!.Checked = col.SortDirection == SortOrder.Descending;
+                _menuSortDescending.Visible = clickedDgvColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
+                _menuSortBySummary!.Visible = col.IsGrouped && col.GroupingType != null;
                 if (_menuSortBySummary.Visible)
                 {
                     _menuSortBySummary.Checked = col.GroupingType!.SortBySummaryCount;
                 }
 
-                _menuClearSorting.Enabled = col.SortDirection != SortOrder.None && !col.IsGrouped;
-                _menuClearSorting.Visible = col.DataGridViewColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
-                _menuSeparator1.Visible = _menuSortAscending.Visible || _menuSortDescending.Visible || _menuClearSorting.Visible;
-                _menuExpand.Visible = col.IsGrouped;
-                _menuCollapse.Visible = col.IsGrouped;
-                _menuSeparator4.Visible = _menuExpand.Visible || _menuCollapse.Visible;
-                _menuGroupByThisColumn.Visible = !col.IsGrouped && col.DataGridViewColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
-                _menuGroupInterval.Visible = col.IsGrouped && col.DataGridViewColumn.SortMode != DataGridViewColumnSortMode.NotSortable && col.GroupingType?.GetType() == typeof(OutlookGridDateTimeGroup);
+                _menuClearSorting!.Enabled = col.SortDirection != SortOrder.None && !col.IsGrouped;
+                _menuClearSorting.Visible = clickedDgvColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
+                _menuSeparator1!.Visible = _menuSortAscending.Visible || _menuSortDescending.Visible || _menuClearSorting.Visible;
+                _menuExpand!.Visible = col.IsGrouped;
+                _menuCollapse!.Visible = col.IsGrouped;
+                _menuSeparator4!.Visible = _menuExpand.Visible || _menuCollapse.Visible;
+                _menuGroupByThisColumn!.Visible = !col.IsGrouped && clickedDgvColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
+                _menuGroupInterval!.Visible = col.IsGrouped && clickedDgvColumn.SortMode != DataGridViewColumnSortMode.NotSortable && col.GroupingType?.GetType() == typeof(OutlookGridDateTimeGroup);
                 if (_menuGroupInterval.Visible)
                 {
                     string? currentInterval = Enum.GetName(typeof(DateInterval), ((col.GroupingType as OutlookGridDateTimeGroup)!).Interval);
@@ -2232,22 +2278,22 @@ namespace Krypton.Toolkit
                         item.Checked = item.Tag!.ToString() == currentInterval;
                     }
                 }
-                _menuUngroupByThisColumn.Visible = col.IsGrouped && col.DataGridViewColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
-                _menuShowGroupBox.Visible = _groupBox != null && !_groupBox.Visible;
-                _menuHideGroupBox.Visible = _groupBox != null && _groupBox.Visible;
-                _menuSeparator2.Visible = _menuGroupByThisColumn.Visible || _menuUngroupByThisColumn.Visible || _menuShowGroupBox.Visible || _menuHideGroupBox.Visible;
-                _menuBestFitColumn.Visible = true;
-                if (col.DataGridViewColumn.GetType() == typeof(KryptonDataGridViewFormattingColumn))
+                _menuUngroupByThisColumn!.Visible = col.IsGrouped && clickedDgvColumn.SortMode != DataGridViewColumnSortMode.NotSortable;
+                _menuShowGroupBox!.Visible = _groupBox != null && !_groupBox.Visible;
+                _menuHideGroupBox!.Visible = _groupBox != null && _groupBox.Visible;
+                _menuSeparator2!.Visible = _menuGroupByThisColumn.Visible || _menuUngroupByThisColumn.Visible || _menuShowGroupBox.Visible || _menuHideGroupBox.Visible;
+                _menuBestFitColumn!.Visible = true;
+                if (clickedDgvColumn.GetType() == typeof(KryptonDataGridViewFormattingColumn))
                 {
-                    _menuSeparator5.Visible = true;
-                    _menuConditionalFormatting.Visible = true;
+                    _menuSeparator5!.Visible = true;
+                    _menuConditionalFormatting!.Visible = true;
 
                     //Get the format condition
                     ConditionalFormatting format = _formatConditions.FirstOrDefault(x => x.ColumnName == col.Name)!;
 
                     for (int i = 0; i < _menuConditionalFormatting.Items[0].ItemChildCount; i++)
                     {
-                        if (format != null 
+                        if (format != null
                             && (_menuConditionalFormatting.Items[0] as KryptonContextMenuItems)!.Items[i].Tag!.ToString()!.Equals(format.FormatType.ToString()))
                         {
                             ((KryptonContextMenuItem)((KryptonContextMenuItems)_menuConditionalFormatting.Items[0]).Items[i]).Checked = true;
@@ -2263,33 +2309,58 @@ namespace Krypton.Toolkit
                 }
                 else
                 {
-                    _menuSeparator5.Visible = false;
-                    _menuConditionalFormatting.Visible = false;
+                    _menuSeparator5!.Visible = false;
+                    _menuConditionalFormatting!.Visible = false;
                 }
+                _menuAggregationNumeric.Visible = clickedDgvColumn.IsNumericColumn();
+                _menuAggregationNonNumeric.Visible = !_menuAggregationNumeric.Visible;
+                if (_menuAggregationNumeric.Visible)
+                {
+                    foreach (KryptonContextMenuItem item in _menuAggregationNumeric.Items)
+                    {
+                        item.Checked = item.Tag!.ToString() == col.AggregationType.ToString();
+                    }
+                }
+                if (_menuAggregationNonNumeric.Visible)
+                {
+                    foreach (KryptonContextMenuItem item in _menuAggregationNonNumeric.Items)
+                    {
+                        item.Checked = item.Tag!.ToString() == col.AggregationType.ToString();
+                    }
+                }
+                _menuFilter.Visible = ShowColumnFilter;
+                _menuClearFilter.Visible = col.Filters != null;
             }
-            else
+            else // If col is null (shouldn't happen if columnIndex is valid but GetOutlookGridColumn returns null)
             {
-                _menuSortAscending.Visible = false;
-                _menuSortDescending.Visible = false;
-                _menuSortBySummary.Visible = false;
-                _menuClearSorting.Visible = false;
-                _menuSeparator1.Visible = _menuSortAscending.Visible || _menuSortDescending.Visible || _menuClearSorting.Visible;
-                _menuExpand.Visible = false;
-                _menuCollapse.Visible = false;
-                _menuSeparator4.Visible = _menuExpand.Visible || _menuCollapse.Visible;
-                _menuGroupByThisColumn.Visible = false;
-                _menuGroupInterval.Visible = false;
-                _menuUngroupByThisColumn.Visible = false;
-                _menuShowGroupBox.Visible = _groupBox != null && !_groupBox.Visible;
-                _menuHideGroupBox.Visible = _groupBox != null && _groupBox.Visible;
-                _menuSeparator2.Visible = _menuGroupByThisColumn.Visible || _menuUngroupByThisColumn.Visible || _menuShowGroupBox.Visible || _menuHideGroupBox.Visible;
-                _menuBestFitColumn.Visible = false;
-                _menuSeparator5.Visible = false;
-                _menuConditionalFormatting.Visible = false;
+                _menuSortAscending!.Visible = false;
+                _menuSortDescending!.Visible = false;
+                _menuSortBySummary!.Visible = false;
+                _menuClearSorting!.Visible = false;
+                _menuSeparator1!.Visible = false;
+                _menuExpand!.Visible = false;
+                _menuCollapse!.Visible = false;
+                _menuSeparator4!.Visible = false;
+                _menuGroupByThisColumn!.Visible = false;
+                _menuGroupInterval!.Visible = false;
+                _menuUngroupByThisColumn!.Visible = false;
+                _menuShowGroupBox!.Visible = _groupBox != null && !_groupBox.Visible;
+                _menuHideGroupBox!.Visible = _groupBox != null && _groupBox.Visible;
+                _menuSeparator2!.Visible = _menuGroupByThisColumn.Visible || _menuUngroupByThisColumn.Visible || _menuShowGroupBox.Visible || _menuHideGroupBox.Visible;
+                _menuBestFitColumn!.Visible = false;
+                _menuSeparator5!.Visible = false;
+                _menuConditionalFormatting!.Visible = false;
+                _menuFilter.Visible = false;
+                _menuClearFilter.Visible = false;
 
+                // Also hide aggregation options if column is invalid
+                _menuAggregationNumeric.Visible = false;
+                _menuAggregationNonNumeric.Visible = false;
+                ((KryptonContextMenuSeparator)_menuItems!.Items[(_menuItems.Items.Count - 3)]).Visible = false; // Hide the separator
             }
 
-            if (!_contextMenu.Items.Contains(_menuItems))
+            // Ensure we add the main collection of menu items to the context menu if not already present
+            if (!_contextMenu!.Items.Contains(_menuItems))
             {
                 _contextMenu.Items.Add(_menuItems);
             }
@@ -2333,6 +2404,7 @@ namespace Krypton.Toolkit
         public void ClearInternalRows()
         {
             _internalRows.Clear();
+            _originalRows.Clear();
         }
 
         /// <summary>
@@ -2342,6 +2414,7 @@ namespace Krypton.Toolkit
         public void AssignRows(List<OutlookGridRow> l)
         {
             _internalRows = l;
+            _originalRows = l;
         }
 
         /// <summary>
@@ -2350,8 +2423,8 @@ namespace Krypton.Toolkit
         /// <param name="col">DataGridViewRowCollection</param>
         public void AssignRows(DataGridViewRowCollection col)
         {
-            //dataSource.Rows = col.Cast<OutlookGridRow>().ToList();
             _internalRows = col.Cast<OutlookGridRow>().ToList();
+            _originalRows = col.Cast<OutlookGridRow>().ToList();
         }
 
         /// <summary>
@@ -3105,6 +3178,10 @@ namespace Krypton.Toolkit
         {
             OutlookGridRow? gridRow;
             IOutlookGridGroup? gridGroup;
+            //OutlookGridRow? grSummaryRow;
+            var firstColumn = this.Columns.GetFirstColumn(DataGridViewElementStates.Visible);
+            int firstColumnIndex = firstColumn == null ? -1 : firstColumn.Index;
+            bool _requireSummary = _fillMode != GridFillMode.GroupsOnly && _internalColumns.Any(c => c.AggregationType != AggregationType.None);
 
             //for each group
             for (var i = 0; i < l.List.Count; i++)
@@ -3137,9 +3214,22 @@ namespace Krypton.Toolkit
                     {
                         NonGroupedRecursiveFillOutlookGridRows(gridGroup.Rows, tmp);
                     }
+                    if (_requireSummary && _showSubTotal)
+                    {
+                        //Create the summary row
+                        var row = CreateSummaryRow(gridGroup, gridGroup.Rows, firstColumnIndex);
+                        tmp.Add(row);
+                    }
                 }
             }
+            if (_requireSummary && _showGrandTotal)
+            {
+                //Create the summary row
+                var row = CreateSummaryRow(null, tmp.Where(r => !r.IsGroupRow && !r.IsSummaryRow).ToList(), firstColumnIndex);
+                tmp.Add(row);
+            }
         }
+
         #endregion Grid Fill functions
 
         /// <summary>
@@ -3209,6 +3299,7 @@ namespace Krypton.Toolkit
         {
             _groupCollection.Clear();
             _internalRows.Clear();
+            _originalRows.Clear();
             _internalColumns.Clear();
             Columns.Clear();
             ConditionalFormatting.Clear();
@@ -3230,5 +3321,360 @@ namespace Krypton.Toolkit
         public OutlookGridColumn? FindFromColumnIndex(int index) => _internalColumns.FindFromColumnIndex(index);
 
         #endregion OutlookGrid methods
+
+
+        #region Aggregation
+
+        private bool _showSubTotal = false;
+        /// <summary>
+        /// Gets or sets a value indicating whether sub-totals should be displayed for grouped columns.
+        /// Setting this property to <c>true</c> will show sub-totals for each group,
+        /// while setting it to <c>false</c> will hide them.
+        /// </summary>
+        [DefaultValue(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public bool ShowSubTotal
+        {
+            get => _showSubTotal;
+            set
+            {
+                if (_showSubTotal != value)
+                {
+                    _showSubTotal = value;
+                    Fill();
+                }
+            }
+        }
+
+        private bool _showGrandTotal = false;
+        /// <summary>
+        /// Gets or sets a value indicating whether a grand total should be displayed for the entire grid.
+        /// Setting this property to <c>true</c> will show a grand total row at the bottom,
+        /// while setting it to <c>false</c> will hide it.
+        /// </summary>
+        [DefaultValue(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public bool ShowGrandTotal
+        {
+            get => _showGrandTotal;
+            set
+            {
+                if (_showGrandTotal != value)
+                {
+                    _showGrandTotal = value;
+                    Fill();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles the change event for aggregation options in the context menu.
+        /// When an aggregation type is selected from the menu, this method updates the
+        /// <see cref="OutlookGridColumn.AggregationType"/> for the selected column
+        /// and triggers a grid refresh to apply the new aggregation.
+        /// </summary>
+        /// <param name="sender">The source of the event, expected to be a <see cref="KryptonContextMenuItem"/>.</param>
+        /// <param name="e">The <see cref="EventArgs"/> instance containing the event data.</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="sender"/> is null.</exception>
+        private void OnAggregationChange(object? sender, EventArgs e)
+        {
+            var item = sender as KryptonContextMenuItem ?? throw new ArgumentNullException(nameof(sender));
+            OutlookGridColumn col = _internalColumns.FindFromColumnIndex(_colSelected)!;
+            if (item != null)
+            {
+                if (item.Tag != null)
+                {
+                    var aggregationType = (AggregationType)Enum.Parse(typeof(AggregationType), item.Tag.ToString()!);
+                    if (col!.AggregationType != aggregationType)
+                    {
+                        col!.AggregationType = aggregationType;
+                        Fill();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Calculates the aggregated value for a given column within a list of rows based on the column's <see cref="AggregationType"/>.
+        /// Supports Sum, Average, Min, Max, and Count.
+        /// </summary>
+        /// <param name="rows">The list of <see cref="OutlookGridRow"/> objects to aggregate.</param>
+        /// <param name="column">The <see cref="OutlookGridColumn"/> for which to perform aggregation,
+        /// which also defines the <see cref="AggregationType"/>.</param>
+        /// <returns>
+        /// The calculated aggregated value as an <see cref="object"/> (e.g., double for Sum/Average,
+        /// object for Min/Max, int for Count), or <c>null</c> if no aggregation is specified
+        /// (<see cref="AggregationType.None"/>) or if an error occurs during calculation (e.g., non-numeric data for numeric aggregations).
+        /// </returns>
+        private object? CalculateAggregation(List<OutlookGridRow> rows, OutlookGridColumn column)
+        {
+            if (column.AggregationType == AggregationType.None)
+            {
+                return null;
+            }
+
+            try
+            {
+                int columnIndex = column.DataGridViewColumn!.Index;
+
+                switch (column.AggregationType)
+                {
+                    case AggregationType.Sum:
+                        return rows.Cast<OutlookGridRow>().Sum(r => Convert.ToDouble(r.Cells[columnIndex].Value));
+                    case AggregationType.Average:
+                        return rows.Cast<OutlookGridRow>().Average(r => Convert.ToDouble(r.Cells[columnIndex].Value));
+                    case AggregationType.Min:
+                        return rows.Cast<OutlookGridRow>().Min(r => r.Cells[columnIndex].Value);
+                    case AggregationType.Max:
+                        return rows.Cast<OutlookGridRow>().Max(r => r.Cells[columnIndex].Value);
+                    case AggregationType.Count:
+                        return rows.Cast<OutlookGridRow>().Count(r => r.Cells[columnIndex].Value != null);
+                    default:
+                        return null;
+                }
+            }
+            catch (Exception)
+            {
+                // Return null if there's an issue with conversion or aggregation (e.g., non-numeric data for sum/average)
+                return null;
+            }
+        }
+
+        private OutlookGridRow CreateSummaryRow(IOutlookGridGroup? gridGroup, List<OutlookGridRow> rows, int firstColumnIndex)
+        {
+            OutlookGridRow? grSummaryRow;
+            //Create the summary row
+            grSummaryRow = RowTemplate.Clone() as OutlookGridRow;
+            grSummaryRow!.Group = gridGroup;
+            grSummaryRow.IsSummaryRow = true;
+
+            if (gridGroup != null)
+                grSummaryRow.Height = gridGroup.Height;
+            grSummaryRow.MinimumHeight = grSummaryRow.Height; //To handle auto resize rows correctly on high dpi
+            object values = gridGroup == null ? null! : gridGroup.Value!;
+            grSummaryRow.CreateCells(this, [values]);
+            for (int j = 0; j < _internalColumns.Count; j++)
+            {
+                var col = _internalColumns[j];
+                if (col.AggregationType == AggregationType.None)
+                {
+                    if (firstColumnIndex > -1 && j == firstColumnIndex)
+                    {
+                        grSummaryRow.Cells[j].Value = gridGroup == null ? "Grand Total" : $"Total for \n{values}";
+                    }
+                    else
+                    {
+                        grSummaryRow.Cells[j].Value = null;
+                    }
+                    continue;
+                }
+                object? aggregatedValue = CalculateAggregation(rows, _internalColumns[j]);
+                // Format the display value
+                if (aggregatedValue != null)
+                {
+                    string format = _internalColumns[j].DataGridViewColumn.DefaultCellStyle.Format;
+                    var formattedValue = !string.IsNullOrEmpty(format) ? string.Format("{0:" + format + "}", aggregatedValue) : aggregatedValue;
+                    grSummaryRow.Cells[j].Value = $"{col.AggregationType}:\n{formattedValue}"; // Example formatting for numbers
+                }
+            }
+            return grSummaryRow;
+        }
+
+        #endregion Aggregation
+
+        #region Filter
+
+        /// <summary>
+        /// Gets or sets a value indicating whether a column filter should be displayed for the column context menu.
+        /// Setting this property to <c>true</c> will show a filter option in column context menu,
+        /// while setting it to <c>false</c> will hide it.
+        /// </summary>
+        [DefaultValue(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public bool ShowColumnFilter { get; set; }
+
+        /// <summary>
+        /// Handles the click event for the filter button, opening a filter dialog for the selected column.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the filter button.</param>
+        /// <param name="e">An <see cref="EventArgs"/> object that contains the event data.</param>
+        private void OnFilterClick(object? sender, EventArgs e)
+        {
+            Filter? filterBuilder = null;
+            try
+            {
+                var col = _internalColumns.FindFromColumnIndex(_colSelected)!;
+                var valueType = col.DataGridViewColumn.ValueType ?? typeof(string);
+                SourceColumn column = new(col.DataGridViewColumn.Name, col.DataGridViewColumn.HeaderText, valueType.Name);
+                filterBuilder = new(column, col.Filters);
+                filterBuilder.Text = $"Filter for {col.DataGridViewColumn.HeaderText}";
+                filterBuilder.FilterChanged += FilterBuilder_FilterChanged;
+                var result = filterBuilder.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    var filterData = filterBuilder.FilterData;
+                    if (filterData == null || filterData.Count == 0)
+                        col.Filters = null;
+                    else
+                        col.Filters = filterData;
+                    ApplyFilter();
+                }
+            }
+            finally
+            {
+                if (filterBuilder != null)
+                    filterBuilder.FilterChanged -= FilterBuilder_FilterChanged;
+            }
+        }
+
+        /// <summary>
+        /// Handles the <see cref="Filter.FilterChanged"/> event from the filter builder dialog,
+        /// applying the filter to the data when the filter criteria change.
+        /// </summary>
+        /// <param name="sender">The source of the event, which is the <see cref="Filter"/> instance.</param>
+        /// <param name="e">An <see cref="EventArgs"/> object that contains the event data.</param>
+        private void FilterBuilder_FilterChanged(object sender, EventArgs e)
+        {
+            Filter currentFilter = (Filter)sender;
+            var fData = currentFilter.FilterData;
+            if (fData != null)
+                ApplyFilter(fData);
+            /*var filterString = currentFilter.FilterString.Trim();
+            if (!string.IsNullOrEmpty(filterString))
+                FilterColumn(filterString);*/
+        }
+
+        /// <summary>
+        /// Handles the click event for the clear filter button, clear a filter for the selected column.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the clear filter button.</param>
+        /// <param name="e">An <see cref="EventArgs"/> object that contains the event data.</param>
+        private void OnClearFilterClick(object? sender, EventArgs e)
+        {
+            var col = _internalColumns.FindFromColumnIndex(_colSelected)!;
+            col.Filters = null;
+            ApplyFilter();
+        }
+
+        /// <summary>
+        /// Applies the current set of filters to the grid's data, updating the displayed rows.
+        /// </summary>
+        /// <param name="currentFilter">An optional list of <see cref="FilterField"/> objects representing
+        /// filters to be applied immediately. If null, existing column filters are used.</param>
+        public void ApplyFilter(List<FilterField>? currentFilter = null)
+        {
+            int grpInfo = 1;
+            List<FilterField> allFilters = [];
+            List<OutlookGridColumn> filteredColumns = [];
+            if (currentFilter != null)
+                filteredColumns = _internalColumns.Where(col => col.Filters != null && col.DataGridViewColumn.Index != _colSelected).ToList();
+            else
+                filteredColumns = _internalColumns.Where(col => col.Filters != null).ToList();
+
+            if (filteredColumns.Count == 0 && currentFilter == null)
+            {
+                _internalRows = _originalRows;
+                Fill();
+                return;
+            }
+            foreach (var col in filteredColumns)
+            {
+                var filters = col.Filters!;
+                for (int i = 0; i < filters.Count; i++)
+                {
+                    if (string.IsNullOrEmpty(filters[i].GroupInfo) || filters[i].IsGroupInfoTemp)
+                    {
+                        filters[i].GroupInfo = grpInfo.ToString();
+                        filters[i].GroupConjunction = "AND";
+                        filters[i].IsGroupInfoTemp = true;
+                    }
+                }
+                allFilters.AddRange(filters);
+                grpInfo++;
+            }
+            if (currentFilter != null)
+            {
+                if (currentFilter.Count == 0 && allFilters.Count == 0) return;
+                for (int i = 0; i < currentFilter.Count; i++)
+                {
+                    if (string.IsNullOrEmpty(currentFilter[i].GroupInfo) || currentFilter[i].IsGroupInfoTemp)
+                    {
+                        currentFilter[i].GroupInfo = grpInfo.ToString();
+                        currentFilter[i].GroupConjunction = "AND";
+                        currentFilter[i].IsGroupInfoTemp = true;
+                    }
+                }
+                allFilters.AddRange(currentFilter);
+            }
+
+            var filterExpression = allFilters.ToExpression<OutlookGridRow>(Columns);
+            // compile and use expression
+            Func<OutlookGridRow, bool> compiledFilter = filterExpression.Compile();
+            var filteredResults = _originalRows.Where(compiledFilter).ToList();
+            _internalRows = filteredResults;
+
+            Fill();
+        }
+
+        /*/// <summary>
+        /// Searches for the specified text within the grid's data.
+        /// It filters the original rows to find those where any cell's formatted value
+        /// contains the search text (case-insensitive). If no matching rows are found
+        /// and the search text is not empty, it returns the search text with the last
+        /// character removed. Finally, it assigns the filtered rows to the grid and refreshes it.
+        /// </summary>
+        public void FilterColumn(string currentColumnFilter)
+        {
+            var filteredColumns = _internalColumns.Where(col => col.Filters != null && col.DataGridViewColumn.Index != _colSelected).ToList();
+            if (filteredColumns.Count == 0 && string.IsNullOrEmpty(currentColumnFilter))
+            {
+                Fill();
+                return;
+            }
+            StringBuilder filterString = new();
+            foreach (var col in filteredColumns)
+            {
+                var filters = col.Filters;
+                foreach (var filter in filters!)
+                {
+                    if (filterString.Length > 0)
+                        filterString.Append(" AND ");
+                    filterString.Append(filter.Filter);
+                }
+            }
+            if (!string.IsNullOrWhiteSpace(currentColumnFilter))
+            {
+                if (filterString.Length > 0)
+                    filterString.Append(" AND ");
+                filterString.Append(currentColumnFilter);
+            }
+            var str = filterString.ToString();
+
+            // Create an instance of the parser for your root data type (OutlookGridRow)
+            var parser = new ExpressionParser<OutlookGridRow>(str, Columns);
+            // Parse the string into a Lambda Expression
+            var filterExpression = parser.Parse();
+            //Debug.WriteLine(filterExpression.ToString());
+
+            // compile and use expression
+            Func<OutlookGridRow, bool> compiledFilter = filterExpression.Compile();
+            var filteredResults = _originalRows.Where(compiledFilter).ToList();
+            _internalRows = filteredResults;
+
+            Fill();
+        }*/
+
+        #endregion Filter
+
+        /*/// <summary>
+        /// Gets distinct values from the column as filter options.
+        /// </summary>
+        public void GetDistinctValuesForFilter(KryptonContextMenuItems parent)
+        {
+            var distinctValues = _originalRows.Select(row => row.Cells[_colSelected].Value).Distinct().ToList();
+            // Sort the distinct values alphabetically for better UX
+            var sortedValues = distinctValues.OrderBy(v => v).ToList();
+        }*/
+
     }
 }

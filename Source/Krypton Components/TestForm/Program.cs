@@ -24,6 +24,7 @@ namespace TestForm
 #if NET6_0_OR_GREATER
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
 #endif
+            Application.Run(new ARKForm());
             Application.Run(new StartScreen());
         }
     }
