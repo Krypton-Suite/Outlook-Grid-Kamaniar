@@ -26,7 +26,7 @@ namespace Krypton.Toolkit
     /// 
     /// for this we need to override the Value property (used for comparison)
     /// and the CompareTo function.
-    /// Also, the Clone method must be overriden, so this Group object can create clones of itself.
+    /// Also, the Clone method must be overridden, so this Group object can create clones of itself.
     /// Cloning of the group is used by the OutlookGrid
     /// 
     public class OutlookGridDateTimeGroup : OutlookGridDefaultGroup
@@ -172,7 +172,8 @@ namespace Krypton.Toolkit
         /// <returns>OutlookGridDateTimeGroup</returns>
         public override object Clone()
         {
-            OutlookGridDateTimeGroup gr = new(ParentGroup);
+            return new OutlookGridDateTimeGroup(this);
+            /*OutlookGridDateTimeGroup gr = new(ParentGroup);
             gr.Column = Column;
             gr.Value = _valDateTime; //thx Resharper !
             gr.Collapsed = Collapsed;
@@ -184,8 +185,7 @@ namespace Krypton.Toolkit
             gr.AllowHiddenWhenGrouped = AllowHiddenWhenGrouped;
             gr.SortBySummaryCount = SortBySummaryCount;
             gr.Interval = Interval;
-
-            return gr;
+            return gr;*/
         }
 
         #endregion

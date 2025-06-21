@@ -158,7 +158,7 @@ namespace Krypton.Toolkit
         /// </summary>
         /// <param name="columns">Sets the fields if the user desires to manually build the fields list.</param>
         /// <param name="fieldData">A list of <see cref="FilterField"/> objects to pre-fill the filter dialog.</param>
-        public Filter(List<SourceColumn> columns, List<FilterField> fieldData)
+        public Filter(List<SourceColumn> columns, List<FilterField>? fieldData)
         {
             // This call is required by the Windows Form Designer.
             InitializeComponent();
@@ -301,8 +301,8 @@ namespace Krypton.Toolkit
         private void BtnClear_Click(object sender, EventArgs e)
         {
             FilterItemGroup1.ClearFilterItems();
+            FilterChanged?.Invoke(null!, EventArgs.Empty);
         }
-
 
         private void FilterItemGroup_FilterChanged(object sender, EventArgs e)
         {

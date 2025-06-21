@@ -239,7 +239,7 @@ namespace Krypton.Toolkit
             {
                 return base.GetState(rowIndex) & DataGridViewElementStates.Selected;
             }
-            //For the TreeGridView project if the selection mode is FullRow subnodes that where collapsed disappear when parent collapse/expands
+            //For the TreeGridView project if the selection mode is FullRow sub nodes that where collapsed disappear when parent collapse/expands
             //because for an unknown reason the state becomes None instead of at least visible.
             if (base.GetState(rowIndex) == DataGridViewElementStates.None)
             {
@@ -250,6 +250,235 @@ namespace Krypton.Toolkit
                 return base.GetState(rowIndex);
             }
         }
+
+        /// <summary>
+        /// Calculates the preferred height of the row, primarily used for automatic row sizing.
+        /// </summary>
+        /// <param name="rowIndex">The index of the row.</param>
+        /// <param name="autoSizeRowMode">A <see cref="DataGridViewAutoSizeRowMode"/> value that specifies how the row's height is to be calculated.</param>
+        /// <param name="fixedWidth">true to calculate the new height based on the current width; otherwise, false.</param>
+        /// <returns>The preferred height of the row in pixels.</returns>
+        /// <remarks>
+        /// This method is overridden to provide custom height calculation for summary rows (<see cref="_isSummaryRow"/>).
+        /// For summary rows, it iterates through all visible cells in the row, measures the required height
+        /// for their formatted text (assuming multiline display with word wrapping), and returns the maximum
+        /// height found among all cells, plus additional padding. This ensures that summary rows
+        /// automatically adjust their height to accommodate wrapped text content.
+        /// <para>
+        /// For all other row types (group rows or regular data rows), this method defers to the
+        /// base <see cref="DataGridViewRow.GetPreferredHeight"/> implementation, allowing the default
+        /// DataGridView sizing behavior to apply.
+        /// </para>
+        /// <para>
+        /// To enable this method to be called, the <see cref="DataGridView.AutoSizeRowsMode"/> property
+        /// of the parent <see cref="KryptonOutlookGrid"/> must be set to a value that enables
+        /// content-based automatic sizing (e.g., <see cref="DataGridViewAutoSizeRowsMode.AllCells"/>).
+        /// Additionally, the <see cref="DataGridViewCellStyle.WrapMode"/> for the cells in summary rows
+        /// should be set to <see cref="DataGridViewTriState.True"/> to allow text wrapping.
+        /// </para>
+        /// </remarks>
+        public override int GetPreferredHeight(int rowIndex, DataGridViewAutoSizeRowMode autoSizeRowMode, bool fixedWidth)
+        {
+            KryptonOutlookGrid grid = (KryptonOutlookGrid)this.DataGridView!;
+            if (grid == null) return base.GetPreferredHeight(rowIndex, autoSizeRowMode, fixedWidth);
+
+            if (_isGroupRow)
+            {
+                // 1. Determine the font
+                PaletteState overallRowRenderingState = grid.SelectedRows.Contains(this) ? PaletteState.CheckedNormal : PaletteState.Normal;
+                Font groupFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, overallRowRenderingState) ??
+                                 new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
+
+                // 2. Get the text that will be displayed
+                /*var textToMeasure = _group!.Text;
+                if (_group.Collapsed)
+                {
+                    textToMeasure = $"{_group.Text}{_group.SummaryText}";
+                }*/
+
+                var textToMeasure = _group!.Text; // Primary group text
+
+                if (_group.Collapsed)
+                {
+                    string summaryText = _group.SummaryText;
+                    // If the main group text exists, add a newline before the summary text.
+                    if (!string.IsNullOrEmpty(textToMeasure) && !string.IsNullOrEmpty(summaryText))
+                    {
+                        textToMeasure += Environment.NewLine;
+                        textToMeasure += summaryText; // summaryText now contains the multi-line, indented summary.
+                    }
+                }
+
+                // 3. Calculate the precise measureWidth (horizontal space for text)
+                int groupRowLevelIndentation = _group.Level * GlobalStaticValues.GroupLevelMultiplier;
+                int imageOffsetUsed = (_group.GroupImage != null) ? GlobalStaticValues.GroupImageSide : 0;
+                int fixedLeftTextPad = 18; // From Paint: offset for icon and initial text indent
+
+                int totalVisibleColumnsWidth = grid.Columns.GetColumnsWidth(DataGridViewElementStates.Visible);
+                int measureWidth = totalVisibleColumnsWidth - (fixedLeftTextPad + imageOffsetUsed + groupRowLevelIndentation);
+
+                // Ensure a positive width for measurement
+                if (measureWidth <= 0)
+                {
+                    measureWidth = 50; // Fallback
+                }
+
+                // 4. Determine TextFormatFlags (consistent with Paint)
+                TextFormatFlags flags = TextFormatFlags.PreserveGraphicsClipping;
+                if (_group.Collapsed)
+                {
+                    flags |= TextFormatFlags.WordBreak;
+                    flags &= ~TextFormatFlags.SingleLine;
+                }
+                else
+                {
+                    flags |= TextFormatFlags.SingleLine;
+                    flags |= TextFormatFlags.EndEllipsis;
+                }
+
+                // 5. Measure the required text height
+                Size textSize;
+                using (Graphics tempGraphics = grid.CreateGraphics())
+                {
+                    textSize = TextRenderer.MeasureText(tempGraphics,
+                                                        text: textToMeasure,
+                                                        font: groupFont,
+                                                        proposedSize: new Size(measureWidth, int.MaxValue), // Allow infinite height
+                                                        flags: flags);
+                }
+
+                // 6. Calculate total preferred height (Vertical components)
+                int measuredTextHeight = textSize.Height;
+                int iconHeight = 11; // From Paint
+                int groupImageHeight = GlobalStaticValues.GroupImageSide; // From Paint
+
+                // The height of the custom bottom line/area
+                int customBottomLineAreaHeight = (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013) ?
+                                                  GlobalStaticValues.Office2013GroupRowHeight :
+                                                  2; // From Paint
+
+                // --- Custom Padding Values (YOU WILL LIKELY NEED TO TUNE THESE) ---
+                // These values represent the empty space above the highest content element
+                // and below the lowest content element, excluding the custom bottom line itself.
+                int topContentPadding = 6; // Space above the text/icon/image
+                int bottomContentPadding = 4; // Space between text/icon/image bottom and the custom bottom line area
+
+                // Max height required by the visual content (text, icon, image)
+                int maxVisualContentHeight = Math.Max(measuredTextHeight, Math.Max(iconHeight, groupImageHeight));
+
+                // Total calculated height:
+                int calculatedHeight = topContentPadding + maxVisualContentHeight + bottomContentPadding + customBottomLineAreaHeight;
+
+                // Ensure a minimum height (e.g., the default row template height)
+                // This prevents the row from becoming too small if content is minimal.
+                return Math.Max(calculatedHeight, grid.RowTemplate.Height);
+            }
+            else if (!_isSummaryRow) // Normal data row
+            {
+                return base.GetPreferredHeight(rowIndex, autoSizeRowMode, fixedWidth);
+            }
+
+            // --- Original Logic for Summary Rows remains below ---
+            // (This part seems correct for summary rows if PaintCells correctly uses cell padding)
+            int maxContentHeight = 0;
+            var boldFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, PaletteState.Normal);
+            boldFont ??= new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
+            TextFormatFlags summaryFlags = TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.WordBreak;
+            int cellPadding = 3;
+
+            foreach (DataGridViewCell cell in this.Cells)
+            {
+                if (cell.Visible && cell.OwningColumn != null && cell.OwningColumn.Visible)
+                {
+                    string cellText = cell.FormattedValue?.ToString() ?? string.Empty;
+                    int columnWidth = cell.OwningColumn.Width;
+                    int availableTextWidth = columnWidth - (2 * cellPadding);
+                    if (availableTextWidth <= 0) continue;
+
+                    Size textSize;
+                    using (Graphics tempGraphics = grid.CreateGraphics())
+                    {
+                        textSize = TextRenderer.MeasureText(tempGraphics,
+                                                         text: cellText,
+                                                         font: boldFont,
+                                                         proposedSize: new Size(availableTextWidth, int.MaxValue),
+                                                         flags: summaryFlags);
+                    }
+                    maxContentHeight = Math.Max(maxContentHeight, textSize.Height + (2 * cellPadding));
+                }
+            }
+
+            int extraRowPadding = 2;
+            int calculatedSummaryRowHeight = maxContentHeight + extraRowPadding;
+            return Math.Max(grid.RowTemplate.Height, calculatedSummaryRowHeight);
+        }
+
+        /*public override int GetPreferredHeight(int rowIndex, DataGridViewAutoSizeRowMode autoSizeRowMode, bool fixedWidth)
+        {
+            if (!_isSummaryRow && !_isGroupRow)
+            {
+                return base.GetPreferredHeight(rowIndex, autoSizeRowMode, fixedWidth);
+            }
+
+            KryptonOutlookGrid grid = (KryptonOutlookGrid)this.DataGridView!;
+            if (grid == null) return base.GetPreferredHeight(rowIndex, autoSizeRowMode, fixedWidth);
+
+            int maxContentHeight = 0; // To store the maximum height needed by any cell's content
+
+            // Get the font that will be used for drawing summary cells.
+            // Assuming boldFont is consistent across all summary cells.
+            var boldFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, PaletteState.Normal);
+            boldFont ??= new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
+
+            TextFormatFlags flags = TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.WordBreak; // Flags for multiline measurement
+            int cellPadding = 3; // Padding used in PaintCells
+
+            // Loop through all cells in THIS row
+            foreach (DataGridViewCell cell in this.Cells)
+            {
+                // Only consider visible columns for text measurement that contributes to row height
+                if (cell.Visible && cell.OwningColumn != null && cell.OwningColumn.Visible)
+                {
+                    string cellText = cell.FormattedValue?.ToString() ?? string.Empty;
+
+                    // Get the actual width of the column this cell belongs to
+                    int columnWidth = cell.OwningColumn.Width;
+                    int availableTextWidth = columnWidth - (2 * cellPadding);
+
+                    if (availableTextWidth <= 0)
+                    {
+                        continue; // Skip cells with no width for text
+                    }
+
+                    Size textSize;
+                    using (Graphics tempGraphics = grid.CreateGraphics())
+                    {
+                        textSize = TextRenderer.MeasureText(tempGraphics,
+                                                            text: cellText,
+                                                            font: boldFont, // Use the appropriate font for summary cells
+                                                            proposedSize: new Size(availableTextWidth, int.MaxValue),
+                                                            flags: flags);
+                    }
+
+                    // Add padding and update maxContentHeight
+                    maxContentHeight = Math.Max(maxContentHeight, textSize.Height + (2 * cellPadding));
+                }
+            }
+
+            // Add extra row padding, which might include space for the bottom line if it's drawn separately
+            int extraRowPadding = 2; // For the bottom border line or overall visual spacing
+                                     // If your bottom line has a fixed height (e.g., Office2013GroupRowHeight),
+                                     // you might need to factor that in here or ensure it fits within default.
+
+            // Ensure minimum row height
+            int minRowHeight = this.Height;
+
+            // The overall preferred height is the max content height plus any additional row padding
+            int calculatedRowHeight = maxContentHeight + extraRowPadding;
+
+            // Ensure the calculated height is at least the minimum required for a row
+            return Math.Max(minRowHeight, calculatedRowHeight);
+        }*/
 
         /// <summary>
         /// the main difference with a Group row and a regular row is the way it is painted on the control.
@@ -265,87 +494,89 @@ namespace Krypton.Toolkit
         /// <param name="isLastVisibleRow"></param>
         protected override void Paint(Graphics graphics, Rectangle clipBounds, Rectangle rowBounds, int rowIndex, DataGridViewElementStates rowState, bool isFirstDisplayedRow, bool isLastVisibleRow)
         {
+            KryptonOutlookGrid grid = (KryptonOutlookGrid)DataGridView!;
+
             if (_isGroupRow)
             {
-                KryptonOutlookGrid grid = (KryptonOutlookGrid)DataGridView!;
+                // --- Define consistent vertical padding and offsets for drawing ---
+                // (These are primarily for TEXT alignment, icon will be centered)
+                int topContentPadding = 6;  // Padding from rowBounds.Top to top of TEXT content
+                int bottomContentPadding = 4; // Padding from bottom of TEXT content to top of custom bottom line
+                int customBottomLineAreaHeight;
+
+                if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
+                {
+                    customBottomLineAreaHeight = GlobalStaticValues.Office2013GroupRowHeight;
+                }
+                else
+                {
+                    customBottomLineAreaHeight = 2; // Default for other renderers
+                }
+
+
+                // --- Horizontal Calculations ---
                 int rowHeadersWidth = grid!.RowHeadersVisible ? grid.RowHeadersWidth : 0;
                 int groupLevelIndentation = _group!.Level * GlobalStaticValues.GroupLevelMultiplier;
 
-                int gridwidth = grid.Columns.GetColumnsWidth(DataGridViewElementStates.Visible);
+                int totalVisibleColumnsWidth = grid.Columns.GetColumnsWidth(DataGridViewElementStates.Visible);
 
-                Rectangle contentBounds = new Rectangle(
-                    rowBounds.Left + rowHeadersWidth, // Start X after row headers
+                Rectangle contentBounds = new(
+                    rowBounds.Left + rowHeadersWidth,
                     rowBounds.Top,
-                    gridwidth, // Width of data columns
+                    totalVisibleColumnsWidth,
                     rowBounds.Height
                 );
 
                 contentBounds.X -= grid.HorizontalScrollingOffset;
 
-                // --- Handle RowHeader area painting first ---
+                // --- Determine Selection State and Corresponding PaletteState ---
+                bool isSelected = (rowState & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected;
+                PaletteState overallRowRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
+
+                // --- RowHeader painting --- (unchanged)
                 if (grid.RowHeadersVisible)
                 {
-                    Rectangle rowHeaderPaintArea = new Rectangle(rowBounds.Left, rowBounds.Top, rowHeadersWidth, rowBounds.Height);
-                    rowHeaderPaintArea.X -= grid.HorizontalScrollingOffset; // Account for scrolling
+                    Rectangle rowHeaderPaintArea = new(rowBounds.Left, rowBounds.Top, rowHeadersWidth, rowBounds.Height);
+                    rowHeaderPaintArea.X -= grid.HorizontalScrollingOffset;
 
-                    IPaletteBack rowHeaderPaletteBack = grid.StateNormal.HeaderRow.Back;
-                    IPaletteBorder rowHeaderPaletteBorder = grid.StateNormal.HeaderRow.Border;
+                    PaletteState rowHeaderRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
+                    IPaletteBack rowHeaderPaletteBack = isSelected ? grid.StateSelected.HeaderRow.Back : grid.StateNormal.HeaderRow.Back;
+                    IPaletteBorder rowHeaderPaletteBorder = isSelected ? grid.StateSelected.HeaderRow.Border : grid.StateNormal.HeaderRow.Border;
 
-                    using (RenderContext rhRenderContext = new RenderContext(grid, graphics, rowHeaderPaintArea, grid.Renderer!))
+                    using (RenderContext rhRenderContext = new(grid, graphics, rowHeaderPaintArea, grid.Renderer!))
                     {
-                        // Draw row header background
-                        using (GraphicsPath rhPath = grid.Renderer!.RenderStandardBorder.GetBackPath(rhRenderContext, rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, PaletteState.Normal))
+                        using (GraphicsPath rhPath = grid.Renderer!.RenderStandardBorder.GetBackPath(rhRenderContext, rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, rowHeaderRenderingState))
                         {
-                            IDisposable? rhUnusedBack = grid.Renderer.RenderStandardBack.DrawBack(rhRenderContext,
-                                rowHeaderPaintArea, rhPath, rowHeaderPaletteBack, VisualOrientation.Top, PaletteState.Normal, null);
-                            if (rhUnusedBack != null) rhUnusedBack.Dispose();
+                            grid.Renderer.RenderStandardBack.DrawBack(rhRenderContext,
+                                rowHeaderPaintArea, rhPath, rowHeaderPaletteBack, VisualOrientation.Top, rowHeaderRenderingState, null);
                         }
-
-                        // Draw the right border of the row header area.
-                        // This creates the "left border" for your content area.
                         grid.Renderer.RenderStandardBorder.DrawBorder(rhRenderContext,
-                            rowHeaderPaintArea, // The area to draw border around
-                            rowHeaderPaletteBorder,
-                            VisualOrientation.Top,
-                            PaletteState.Normal
-                        );
+                            rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, rowHeaderRenderingState);
                     }
                 }
-                // --- End of RowHeader area painting ---
 
+                // --- Paint the Group Row's Content Area (Background and Border) --- (unchanged)
+                IPaletteBack contentPaletteBack = isSelected ? grid.StateSelected.DataCell.Back : grid.StateNormal.DataCell.Back;
+                IPaletteBorder contentPaletteBorder = isSelected ? grid.StateSelected.DataCell.Border : grid.StateNormal.DataCell.Border;
+                PaletteState contentRenderingState = overallRowRenderingState;
 
-                // --- Paint the Group Row's Content Area ---
-                IPaletteBack contentPaletteBack = grid.StateNormal.DataCell.Back;
-                IPaletteBorder contentPaletteBorder = grid.StateNormal.DataCell.Border; // Use DataCell borders for content
-
-                PaletteState state = PaletteState.Normal;
-                if (grid.PreviousSelectedGroupRow == rowIndex && KryptonManager.CurrentGlobalPalette.GetRenderer() != KryptonManager.RenderOffice2013)
+                if (!isSelected && grid.PreviousSelectedGroupRow == rowIndex && KryptonManager.CurrentGlobalPalette.GetRenderer() != KryptonManager.RenderOffice2013)
                 {
-                    state = PaletteState.CheckedNormal;
+                    contentRenderingState = PaletteState.CheckedNormal;
                 }
 
                 using (RenderContext renderContext = new(grid, graphics, contentBounds, grid.Renderer!))
                 {
-                    // Draw content background
-                    using (GraphicsPath path = grid.Renderer!.RenderStandardBorder.GetBackPath(renderContext, contentBounds, contentPaletteBorder, VisualOrientation.Top, PaletteState.Normal))
+                    using (GraphicsPath path = grid.Renderer!.RenderStandardBorder.GetBackPath(renderContext, contentBounds, contentPaletteBorder, VisualOrientation.Top, contentRenderingState))
                     {
-                        IDisposable? unusedBack = grid.Renderer.RenderStandardBack.DrawBack(renderContext,
-                            contentBounds, path, contentPaletteBack, VisualOrientation.Top, state, null);
-                        if (unusedBack != null) unusedBack.Dispose();
+                        grid.Renderer.RenderStandardBack.DrawBack(renderContext,
+                            contentBounds, path, contentPaletteBack, VisualOrientation.Top, contentRenderingState, null);
                     }
-
-                    // Draw the border for the content area.
-                    // We draw top, bottom, and right. The left border is handled by the row header's right border.
                     grid.Renderer.RenderStandardBorder.DrawBorder(renderContext,
-                        contentBounds,
-                        contentPaletteBorder,
-                        VisualOrientation.Top,
-                        state
-                    );
+                        contentBounds, contentPaletteBorder, VisualOrientation.Top, contentRenderingState);
                 }
 
-                // Draw the custom bottom line (dashed, specific color, etc.)
-                // This is separate because it has special styling (dash style for 2010, fill for 2013, etc.)
+                // --- Draw the custom bottom line --- (unchanged, as it's bottom-aligned)
                 if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010)
                 {
                     using (Pen focusPen = new(Color.Gray))
@@ -358,31 +589,29 @@ namespace Krypton.Toolkit
                 {
                     using (SolidBrush br = new(Color.FromArgb(225, 225, 225)))
                     {
-                        graphics.FillRectangle(br, contentBounds.Left, rowBounds.Bottom - GlobalStaticValues.Office2013GroupRowHeight, contentBounds.Width + 1, GlobalStaticValues.Office2013GroupRowHeight - 1);
+                        graphics.FillRectangle(br, contentBounds.Left, rowBounds.Bottom - customBottomLineAreaHeight, contentBounds.Width + 1, customBottomLineAreaHeight - 1);
                     }
                 }
                 else
                 {
-                    using (SolidBrush br = new(contentPaletteBorder.GetBorderColor1(state))) // Use contentPaletteBorder for consistency
+                    using (SolidBrush br = new(contentPaletteBorder.GetBorderColor1(contentRenderingState)))
                     {
-                        graphics.FillRectangle(br, contentBounds.Left, rowBounds.Bottom - 2, contentBounds.Width + 1, 2);
+                        graphics.FillRectangle(br, contentBounds.Left, rowBounds.Bottom - customBottomLineAreaHeight, contentBounds.Width + 1, customBottomLineAreaHeight);
                     }
                 }
 
-                // The right vertical bar for the content area's right edge
-                // This was already working correctly as it's at contentBounds.Right
-                // if (grid.CellBorderStyle is DataGridViewCellBorderStyle.SingleVertical or DataGridViewCellBorderStyle.Single)
-                // {
-                //     using (SolidBrush br = new(contentPaletteBorder.GetBorderColor1(state)))
-                //     {
-                //         graphics.FillRectangle(br, contentBounds.Right, rowBounds.Top, 1, rowBounds.Height);
-                //     }
-                // }
+                // --- Calculate the Y-coordinate for vertically centered icon and image ---
+                int iconHeight = 11; // Standard icon height
+                int centeredIconY = rowBounds.Y + (rowBounds.Height / 2) - (iconHeight / 2);
 
+                // --- Calculate the common Y-coordinate for TEXT (still top-aligned for wrapping) ---
+                // Text will remain top-aligned as per your working height calculation,
+                // unless you want to vertically center text too (which is complex with wrapping).
+                int textDrawingTopY = rowBounds.Top + topContentPadding;
 
-                // Set the icon and lines according to the renderer
+                // --- Set the icon ---
                 int iconX = contentBounds.Left + 4 + groupLevelIndentation;
-                int iconY = rowBounds.Bottom - 18;
+                int iconY = centeredIconY; // NEW: Vertically centered
 
                 if (_group.Collapsed)
                 {
@@ -407,65 +636,322 @@ namespace Krypton.Toolkit
                     }
                 }
 
-                //Draw image group
-                int imageoffset = 0;
+                // --- Draw image group ---
+                int imageOffset = 0;
                 if (_group.GroupImage != null)
                 {
+                    int groupImageHeight = GlobalStaticValues.GroupImageSide; // Height of the group image
                     int imageX = contentBounds.Left + GlobalStaticValues.ImageOffsetWidth + groupLevelIndentation;
-                    int imageY = (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013) ?
-                                    rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight :
-                                    rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight;
+                    int imageY = rowBounds.Y + (rowBounds.Height / 2) - (groupImageHeight / 2); // NEW: Vertically centered
 
                     graphics.DrawImage(_group.GroupImage, imageX, imageY, GlobalStaticValues.GroupImageSide, GlobalStaticValues.GroupImageSide);
-                    imageoffset = GlobalStaticValues.GroupImageSide;
+                    imageOffset = GlobalStaticValues.GroupImageSide;
                 }
 
-                // Draw text, using the current grid font
-                int offsetText = contentBounds.Left + 18 + imageoffset + groupLevelIndentation;
+                // --- Draw text, using the current grid font ---
+                int offsetText = contentBounds.Left + 18 + imageOffset + groupLevelIndentation; // This is the X-start for text
                 int textRectWidth = contentBounds.Right - offsetText;
 
-                if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
+                Color groupTextForeColor;
+                if (isSelected)
                 {
-                    // This line already uses _group.Text, which will now contain aggregated values
-                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state),
-                        new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight, textRectWidth, rowBounds.Height),
-                        grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
-                        TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
+                    groupTextForeColor = grid.DefaultCellStyle.SelectionForeColor;
                 }
                 else
                 {
-                    // This line already uses _group.Text, which will now contain aggregated values
-                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state),
-                        new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight, textRectWidth, rowBounds.Height),
-                        grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
-                        TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
+                    groupTextForeColor = grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, overallRowRenderingState);
                 }
 
-                /*//Draw text, using the current grid font
-                int offsetText = contentBounds.Left + 18 + imageoffset + groupLevelIndentation;
-                int textRectWidth = contentBounds.Right - offsetText;
+                Font groupFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, overallRowRenderingState) ??
+                                 new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
 
-                if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
+                Rectangle textDrawingRect = new Rectangle(
+                    offsetText,
+                    textDrawingTopY, // Text drawing remains top-aligned
+                    textRectWidth,
+                    rowBounds.Height - (textDrawingTopY - rowBounds.Top) - customBottomLineAreaHeight - bottomContentPadding
+                );
+
+                if (textDrawingRect.Width <= 0) textDrawingRect.Width = 1;
+                if (textDrawingRect.Height <= 0) textDrawingRect.Height = 1;
+
+                /*var text = _group.Text;
+                if (_group.Collapsed)
+                    text = $"{_group.Text}{_group.SummaryText}";*/
+
+                var text = _group.Text; // This is the main group text (e.g., "Category: Electronics")
+
+                if (_group.Collapsed)
                 {
-                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state),
-                        new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight, textRectWidth, rowBounds.Height),
-                        grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
-                        TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
+                    string summaryText = _group.SummaryText;
+                    // If the main group text exists, add a newline before the summary text.
+                    // This creates a visual separation between the group name and its summary details.
+                    if (!string.IsNullOrEmpty(text) && !string.IsNullOrEmpty(summaryText))
+                    {
+                        text += Environment.NewLine;
+                        text += summaryText; // _group.SummaryText now contains the multi-line, indented summary.
+                    }
+                }
+
+                TextFormatFlags flags = TextFormatFlags.PreserveGraphicsClipping;
+                if (_group.Collapsed)
+                {
+                    flags |= TextFormatFlags.WordBreak;
+                    flags &= ~TextFormatFlags.SingleLine;
                 }
                 else
                 {
-                    TextRenderer.DrawText(graphics, _group.Text, grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, state),
-                        new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight, textRectWidth, rowBounds.Height),
-                        grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, state),
-                        TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping);
-                }*/
+                    flags |= TextFormatFlags.SingleLine;
+                    flags |= TextFormatFlags.EndEllipsis;
+                }
+
+                TextRenderer.DrawText(graphics, text, groupFont, textDrawingRect,
+                                      groupTextForeColor,
+                                      flags);
+
+                // RE-ADDED: This line is necessary to trigger GetPreferredHeight updates
+                grid.AutoResizeRow(rowIndex, DataGridViewAutoSizeRowMode.AllCells);
             }
-            else
+            else // Not a group row
             {
                 base.Paint(graphics, clipBounds, rowBounds, rowIndex, rowState, isFirstDisplayedRow, isLastVisibleRow);
             }
         }
 
+        /*protected override void Paint(Graphics graphics, Rectangle clipBounds, Rectangle rowBounds, int rowIndex, DataGridViewElementStates rowState, bool isFirstDisplayedRow, bool isLastVisibleRow)
+        {
+            KryptonOutlookGrid grid = (KryptonOutlookGrid)DataGridView!;
+
+            if (_isGroupRow)
+            {
+                int rowHeadersWidth = grid!.RowHeadersVisible ? grid.RowHeadersWidth : 0;
+                int groupLevelIndentation = _group!.Level * GlobalStaticValues.GroupLevelMultiplier;
+
+                int gridWidth = grid.Columns.GetColumnsWidth(DataGridViewElementStates.Visible);
+
+                Rectangle contentBounds = new(
+                    rowBounds.Left + rowHeadersWidth, // Start X after row headers
+                    rowBounds.Top,
+                    gridWidth, // Width of data columns
+                    rowBounds.Height
+                );
+
+                contentBounds.X -= grid.HorizontalScrollingOffset;
+
+                // --- Determine Selection State and Corresponding PaletteState ---
+                bool isSelected = (rowState & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected;
+
+                // Use PaletteState.CheckedNormal for rendering if selected, aligning with your Sync...CellStylesWithPalette
+                PaletteState overallRowRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
+
+                // --- Handle RowHeader area painting first ---
+                if (grid.RowHeadersVisible)
+                {
+                    Rectangle rowHeaderPaintArea = new(rowBounds.Left, rowBounds.Top, rowHeadersWidth, rowBounds.Height);
+                    rowHeaderPaintArea.X -= grid.HorizontalScrollingOffset; // Account for scrolling
+
+                    // Determine the PaletteState specifically for the RowHeader based on selection
+                    // The RowHeader itself typically uses PaletteState.Selected for its selected appearance.
+                    PaletteState rowHeaderRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
+
+                    // Get the correct palette items for RowHeader background and border (Selected or Normal)
+                    IPaletteBack rowHeaderPaletteBack = isSelected ? grid.StateSelected.HeaderRow.Back : grid.StateNormal.HeaderRow.Back;
+                    IPaletteBorder rowHeaderPaletteBorder = isSelected ? grid.StateSelected.HeaderRow.Border : grid.StateNormal.HeaderRow.Border;
+
+                    using (RenderContext rhRenderContext = new(grid, graphics, rowHeaderPaintArea, grid.Renderer!))
+                    {
+                        // Draw row header background
+                        using (GraphicsPath rhPath = grid.Renderer!.RenderStandardBorder.GetBackPath(rhRenderContext, rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, rowHeaderRenderingState))
+                        {
+                            grid.Renderer.RenderStandardBack.DrawBack(rhRenderContext,
+                                rowHeaderPaintArea, rhPath, rowHeaderPaletteBack, VisualOrientation.Top, rowHeaderRenderingState, null);
+                        }
+
+                        // Draw the right border of the row header area.
+                        grid.Renderer.RenderStandardBorder.DrawBorder(rhRenderContext,
+                            rowHeaderPaintArea,
+                            rowHeaderPaletteBorder,
+                            VisualOrientation.Top,
+                            rowHeaderRenderingState // Pass the correct state for the border
+                        );
+                    }
+                }
+                // --- End of RowHeader area painting ---
+
+                // --- Paint the Group Row's Content Area ---
+                IPaletteBack contentPaletteBack = isSelected ? grid.StateSelected.DataCell.Back : grid.StateNormal.DataCell.Back; // Use DataCell back for consistency
+                IPaletteBorder contentPaletteBorder = isSelected ? grid.StateSelected.DataCell.Border : grid.StateNormal.DataCell.Border; // Use DataCell borders for consistency
+
+                // This 'state' variable was previously conditional on PreviousSelectedGroupRow and Office2013 renderer.
+                // Now, prioritize the actual DataGridView selection state.
+                // If you still want the PreviousSelectedGroupRow highlight *when not DataGridView selected*,
+                // you'd add an 'else if' condition here.
+                PaletteState contentRenderingState = overallRowRenderingState;
+
+                // Original logic: If not DataGridView selected, apply custom highlight if PreviousSelectedGroupRow matches.
+                // This keeps your previous custom highlight logic for unselected but 'previously selected' groups.
+                if (!isSelected && grid.PreviousSelectedGroupRow == rowIndex && KryptonManager.CurrentGlobalPalette.GetRenderer() != KryptonManager.RenderOffice2013)
+                {
+                    contentRenderingState = PaletteState.CheckedNormal; // Apply your custom highlight
+                }
+
+                using (RenderContext renderContext = new(grid, graphics, contentBounds, grid.Renderer!))
+                {
+                    // Draw content background
+                    using (GraphicsPath path = grid.Renderer!.RenderStandardBorder.GetBackPath(renderContext, contentBounds, contentPaletteBorder, VisualOrientation.Top, contentRenderingState))
+                    {
+                        grid.Renderer.RenderStandardBack.DrawBack(renderContext,
+                            contentBounds, path, contentPaletteBack, VisualOrientation.Top, contentRenderingState, null);
+                    }
+
+                    // Draw the border for the content area.
+                    grid.Renderer.RenderStandardBorder.DrawBorder(renderContext,
+                        contentBounds,
+                        contentPaletteBorder,
+                        VisualOrientation.Top,
+                        contentRenderingState
+                    );
+                }
+
+                // --- Draw the custom bottom line ---
+                if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010)
+                {
+                    using (Pen focusPen = new(Color.Gray))
+                    {
+                        focusPen.DashStyle = DashStyle.Dash;
+                        graphics.DrawLine(focusPen, contentBounds.Left, rowBounds.Bottom - 1, contentBounds.Right + 1, rowBounds.Bottom - 1);
+                    }
+                }
+                else if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
+                {
+                    using (SolidBrush br = new(Color.FromArgb(225, 225, 225)))
+                    {
+                        graphics.FillRectangle(br, contentBounds.Left, rowBounds.Bottom - GlobalStaticValues.Office2013GroupRowHeight, contentBounds.Width + 1, GlobalStaticValues.Office2013GroupRowHeight - 1);
+                    }
+                }
+                else
+                {
+                    // Use the determined contentPaletteBorder for consistency
+                    using (SolidBrush br = new(contentPaletteBorder.GetBorderColor1(contentRenderingState)))
+                    {
+                        graphics.FillRectangle(br, contentBounds.Left, rowBounds.Bottom - 2, contentBounds.Width + 1, 2);
+                    }
+                }
+
+                // --- Set the icon and lines according to the renderer ---
+                int iconX = contentBounds.Left + 4 + groupLevelIndentation;
+                int iconY = rowBounds.Bottom - 18;
+
+                // Your existing icon drawing logic (no change needed here for selection)
+                if (_group.Collapsed)
+                {
+                    if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010 || KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
+                    {
+                        graphics.DrawImage(GenericImageResources.CollapseIcon2010, iconX, iconY, 11, 11);
+                    }
+                    else
+                    {
+                        graphics.DrawImage(GenericImageResources.ExpandIcon, iconX, iconY, 11, 11);
+                    }
+                }
+                else
+                {
+                    if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010 || KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
+                    {
+                        graphics.DrawImage(GenericImageResources.ExpandIcon2010, iconX, iconY, 11, 11);
+                    }
+                    else
+                    {
+                        graphics.DrawImage(GenericImageResources.CollapseIcon, iconX, iconY, 11, 11);
+                    }
+                }
+
+                // --- Draw image group ---
+                int imageOffset = 0;
+                if (_group.GroupImage != null)
+                {
+                    int imageX = contentBounds.Left + GlobalStaticValues.ImageOffsetWidth + groupLevelIndentation;
+                    int imageY = (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013) ?
+                                        rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight :
+                                        rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight;
+
+                    graphics.DrawImage(_group.GroupImage, imageX, imageY, GlobalStaticValues.GroupImageSide, GlobalStaticValues.GroupImageSide);
+                    imageOffset = GlobalStaticValues.GroupImageSide;
+                }
+
+                // --- Draw text, using the current grid font ---
+                int offsetText = contentBounds.Left + 18 + imageOffset + groupLevelIndentation;
+                int textRectWidth = contentBounds.Right - offsetText;
+
+                Color groupTextForeColor;
+                if (isSelected)
+                {
+                    // If the group row is selected, use the SelectionForeColor from DefaultCellStyle
+                    groupTextForeColor = grid.DefaultCellStyle.SelectionForeColor;
+                }
+                else
+                {
+                    // Otherwise, get the normal text color from the palette
+                    groupTextForeColor = grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, overallRowRenderingState);
+                }
+
+                // Using the same PaletteContentStyle.LabelBoldControl for font, assuming bold is always desired for group rows.
+                // If the font changes on selection, you'd need another conditional for font.
+                Font groupFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, overallRowRenderingState) ??
+                                 new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
+
+                Rectangle textDrawingRect;
+                if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013)
+                {
+                    textDrawingRect = new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.Office2013OffsetHeight, textRectWidth, rowBounds.Height);
+                }
+                else
+                {
+                    textDrawingRect = new Rectangle(offsetText, rowBounds.Bottom - GlobalStaticValues.DefaultOffsetHeight, textRectWidth, rowBounds.Height);
+                }
+
+                var text = _group.Text;
+                if (_group.Collapsed)
+                    text = $"{_group.Text}{_group.SummaryText}"; // Concatenate group text and summary text
+
+                // --- Important: To enable multi-line text when collapsed, you need to adjust TextFormatFlags ---
+                // Current: TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine | TextFormatFlags.PreserveGraphicsClipping
+                // Proposed for Multi-line:
+                // Remove TextFormatFlags.SingleLine
+                // Add TextFormatFlags.WordBreak (if you want words to break to next line)
+                // Adjust textDrawingRect.Height to accommodate multiple lines, if needed (or ensure rowBounds.Height is sufficient)
+
+                TextFormatFlags flags = TextFormatFlags.EndEllipsis | TextFormatFlags.PreserveGraphicsClipping;
+
+                // If you want multi-line when collapsed, add WordBreak and potentially remove SingleLine
+                if (_group.Collapsed)
+                {
+                    // If you want actual multi-line, remove SingleLine and add WordBreak
+                    flags |= TextFormatFlags.WordBreak; // Allow text to wrap to the next line
+                                                        // You might also need to ensure the textDrawingRect.Height is sufficient or calculated dynamically
+                                                        // based on the expected text height, or the row's height.
+                                                        // For now, let's assume rowBounds.Height is enough, but in a real scenario, you might need to
+                                                        // measure the text with the new flags and adjust row height or text area height.
+                }
+                else
+                {
+                    // For un collapsed state, keep it single line with ellipsis if desired
+                    flags |= TextFormatFlags.SingleLine;
+                }
+
+
+                TextRenderer.DrawText(graphics, text, groupFont, textDrawingRect,
+                                         groupTextForeColor, // Use the determined foreground color
+                                         flags); // Use the dynamically determined flags
+                grid.AutoResizeRow(rowIndex, DataGridViewAutoSizeRowMode.AllCells); // Manually resize
+            }
+            else // Not a group row
+            {
+                // For non-group rows (regular data rows or summary rows), let the base class handle painting.
+                // The summary row painting is handled in PaintCells, which is called after this if not a group row.
+                base.Paint(graphics, clipBounds, rowBounds, rowIndex, rowState, isFirstDisplayedRow, isLastVisibleRow);
+            }
+        }*/
 
         /// <summary>
         /// Paints the cells.
@@ -481,11 +967,173 @@ namespace Krypton.Toolkit
         /// <remarks>Will not execute if it is a group row.)</remarks>
         protected override void PaintCells(Graphics graphics, Rectangle clipBounds, Rectangle rowBounds, int rowIndex, DataGridViewElementStates rowState, bool isFirstDisplayedRow, bool isLastVisibleRow, DataGridViewPaintParts paintParts)
         {
-            if (!_isGroupRow)
+            if (_isGroupRow)
+            {
+                return;
+            }
+
+            if (_isSummaryRow)
+            {
+                KryptonOutlookGrid grid = (KryptonOutlookGrid)DataGridView!;
+                var boldFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, PaletteState.Normal);
+                boldFont ??= new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
+
+                bool isSelected = this.Selected;
+
+                PaletteState overallCellRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
+
+                foreach (DataGridViewCell cell in this.Cells)
+                {
+                    Rectangle cellBounds = grid.GetCellDisplayRectangle(cell.ColumnIndex, rowIndex, false);
+
+                    if (cellBounds.IntersectsWith(clipBounds))
+                    {
+                        DataGridViewCellStyle cellStyle = cell.InheritedStyle;
+
+                        IPaletteBack cellBackPalette;
+                        IPaletteBorder cellBorderPalette;
+                        Color currentCellTextColor;
+
+                        if (isSelected)
+                        {
+                            cellBackPalette = grid.StateSelected.DataCell.Back;
+                            cellBorderPalette = grid.StateSelected.DataCell.Border;
+                            currentCellTextColor = grid.DefaultCellStyle.SelectionForeColor;
+                        }
+                        else
+                        {
+                            cellBackPalette = grid.StateNormal.DataCell.Back;
+                            cellBorderPalette = grid.StateNormal.DataCell.Border;
+                            currentCellTextColor = grid.GridPalette!.GetContentShortTextColor1(PaletteContentStyle.LabelNormalControl, PaletteState.Normal);
+                        }
+
+                        using (RenderContext cellRenderContext = new(grid, graphics, cellBounds, grid.Renderer!))
+                        {
+                            using (GraphicsPath cellPath = grid.Renderer!.RenderStandardBorder.GetBackPath(cellRenderContext, cellBounds, cellBorderPalette, VisualOrientation.Top, overallCellRenderingState))
+                            {
+                                grid.Renderer.RenderStandardBack.DrawBack(cellRenderContext,
+                                    cellBounds, cellPath, cellBackPalette, VisualOrientation.Top, overallCellRenderingState, null);
+                            }
+                        }
+
+                        TextFormatFlags flags = TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.WordBreak;
+                        flags |= cellStyle.Alignment switch
+                        {
+                            DataGridViewContentAlignment.BottomLeft => TextFormatFlags.Bottom | TextFormatFlags.Left,
+                            DataGridViewContentAlignment.BottomCenter => TextFormatFlags.Bottom | TextFormatFlags.HorizontalCenter,
+                            DataGridViewContentAlignment.BottomRight => TextFormatFlags.Bottom | TextFormatFlags.Right,
+                            DataGridViewContentAlignment.MiddleLeft => TextFormatFlags.VerticalCenter | TextFormatFlags.Left,
+                            DataGridViewContentAlignment.MiddleCenter => TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter,
+                            DataGridViewContentAlignment.MiddleRight => TextFormatFlags.VerticalCenter | TextFormatFlags.Right,
+                            DataGridViewContentAlignment.TopLeft => TextFormatFlags.Top | TextFormatFlags.Left,
+                            DataGridViewContentAlignment.TopCenter => TextFormatFlags.Top | TextFormatFlags.HorizontalCenter,
+                            DataGridViewContentAlignment.TopRight => TextFormatFlags.Top | TextFormatFlags.Right,
+                            _ => TextFormatFlags.VerticalCenter | TextFormatFlags.Left,
+                        };
+                        string cellText = cell.FormattedValue?.ToString() ?? string.Empty;
+                        if (cell.ValueType == typeof(bool))
+                            cellText = string.Empty;
+                        else if (cell.ValueType == typeof(Image))
+                            cellText = string.Empty;
+
+                        int cellPadding = 3;
+                        Rectangle textRect = new(
+                            cellBounds.X + cellPadding,
+                            cellBounds.Y,
+                            cellBounds.Width - (2 * cellPadding),
+                            cellBounds.Height
+                        );
+
+                        TextRenderer.DrawText(graphics, cellText, boldFont, textRect, currentCellTextColor, flags);
+
+                        // --- PAINT ALL SINGLE CELL BORDERS ---
+                        int borderThickness = 1; // You can make this 1, 2, or whatever you prefer
+                        Color borderColor = cellBorderPalette.GetBorderColor1(overallCellRenderingState);
+
+                        using (Pen cellBorderPen = new(borderColor, borderThickness))
+                        {
+                            // Right Border
+                            graphics.DrawLine(cellBorderPen, cellBounds.Right - borderThickness, cellBounds.Top,
+                                              cellBounds.Right - borderThickness, cellBounds.Bottom);
+
+                            // Left Border
+                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Top,
+                                              cellBounds.Left, cellBounds.Bottom);
+
+                            // Top Border
+                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Top,
+                                              cellBounds.Right, cellBounds.Top);
+
+                            // Bottom Border
+                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Bottom - borderThickness,
+                                              cellBounds.Right, cellBounds.Bottom - borderThickness);
+                        }
+
+                        // --- PAINT ALL DOUBLE CELL BORDERS ---
+                        // Get the primary border color from the palette
+                        /*Color primaryBorderColor = cellBorderPalette.GetBorderColor1(overallCellRenderingState);
+
+                        // Define colors for the double border. You can use different shades or entirely different colors.
+                        // You might want to make these static or define them once if they don't change per cell.
+                        Color outerBorderColor = primaryBorderColor;
+                        Color innerBorderColor = Color.LightGray; // Or a slightly darker/lighter shade of primaryBorderColor
+
+                        // Adjust these based on your design preference
+                        int outerBorderThickness = 1;
+                        int innerBorderThickness = 1;
+                        int gapBetweenBorders = 1; // Gap between the two lines
+
+                        // Reusable Pen objects for efficiency (create outside loop if painting many cells)
+                        // However, for clarity in this example, they are inside.
+                        using (Pen outerPen = new(outerBorderColor, outerBorderThickness))
+                        using (Pen innerPen = new(innerBorderColor, innerBorderThickness))
+                        {
+                            // --- Right Border ---
+                            int outerRightX = cellBounds.Right - outerBorderThickness;
+                            graphics.DrawLine(outerPen, outerRightX, cellBounds.Top, outerRightX, cellBounds.Bottom);
+
+                            int innerRightX = cellBounds.Right - outerBorderThickness - gapBetweenBorders - innerBorderThickness;
+                            graphics.DrawLine(innerPen, innerRightX, cellBounds.Top, innerRightX, cellBounds.Bottom);
+
+                            // --- Left Border ---
+                            int outerLeftX = cellBounds.Left;
+                            graphics.DrawLine(outerPen, outerLeftX, cellBounds.Top, outerLeftX, cellBounds.Bottom);
+
+                            int innerLeftX = cellBounds.Left + outerBorderThickness + gapBetweenBorders;
+                            graphics.DrawLine(innerPen, innerLeftX, cellBounds.Top, innerLeftX, cellBounds.Bottom);
+
+                            // --- Top Border ---
+                            int outerTopY = cellBounds.Top;
+                            graphics.DrawLine(outerPen, cellBounds.Left, outerTopY, cellBounds.Right, outerTopY);
+
+                            int innerTopY = cellBounds.Top + outerBorderThickness + gapBetweenBorders;
+                            graphics.DrawLine(innerPen, cellBounds.Left, innerTopY, cellBounds.Right, innerTopY);
+
+                            // --- Bottom Border ---
+                            int outerBottomY = cellBounds.Bottom - outerBorderThickness;
+                            graphics.DrawLine(outerPen, cellBounds.Left, outerBottomY, cellBounds.Right, outerBottomY);
+
+                            int innerBottomY = cellBounds.Bottom - outerBorderThickness - gapBetweenBorders - innerBorderThickness;
+                            graphics.DrawLine(innerPen, cellBounds.Left, innerBottomY, cellBounds.Right, innerBottomY);
+                        }*/
+
+                    }
+                }
+                grid.AutoResizeRow(rowIndex, DataGridViewAutoSizeRowMode.AllCells); // Manually resize
+            }
+            else // It's a regular data row
             {
                 base.PaintCells(graphics, clipBounds, rowBounds, rowIndex, rowState, isFirstDisplayedRow, isLastVisibleRow, paintParts);
             }
         }
+
+        /*protected override void PaintCells(Graphics graphics, Rectangle clipBounds, Rectangle rowBounds, int rowIndex, DataGridViewElementStates rowState, bool isFirstDisplayedRow, bool isLastVisibleRow, DataGridViewPaintParts paintParts)
+        {
+            if (!_isGroupRow && !_isGroupRow)
+            {
+                base.PaintCells(graphics, clipBounds, rowBounds, rowIndex, rowState, isFirstDisplayedRow, isLastVisibleRow, paintParts);
+            }
+        }*/
 
 
         /// <summary>
@@ -618,7 +1266,7 @@ namespace Krypton.Toolkit
             {
                 Group!.Collapsed = collapsed;
 
-                //this is a workaround to make the grid re-calculate it's contents and backgroun bounds
+                //this is a workaround to make the grid re-calculate it's contents and background bounds
                 // so the background is updated correctly.
                 // this will also invalidate the control, so it will redraw itself
                 Visible = false;
@@ -638,7 +1286,7 @@ namespace Krypton.Toolkit
             {
                 Collapsed = collapsed;
 
-                //this is a workaround to make the grid re-calculate it's contents and backgroun bounds
+                //this is a workaround to make the grid re-calculate it's contents and background bounds
                 // so the background is updated correctly.
                 // this will also invalidate the control, so it will redraw itself
                 Visible = false;
@@ -680,6 +1328,69 @@ namespace Krypton.Toolkit
         /// <returns>returns true if the icon was hit, false otherwise</returns>
         internal bool IsIconHit(DataGridViewCellMouseEventArgs e)
         {
+            // Basic checks first
+            if (e.ColumnIndex < 0)
+            {
+                return false;
+            }
+            if (!_isGroupRow)
+            {
+                return false;
+            }
+
+            KryptonOutlookGrid? grid = DataGridView as KryptonOutlookGrid;
+            if (grid == null)
+            {
+                return false;
+            }
+
+            // Get the display rectangle of the row and the cell that received the event.
+            // rowBounds are relative to the DataGridView client area.
+            Rectangle rowBounds = grid.GetRowDisplayRectangle(Index, false);
+            Rectangle cellBounds = grid.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
+
+            // Calculate the mouse click's X and Y coordinates relative to the DataGridView's client area.
+            // e.X is relative to the cell. cellBounds.Left is relative to the grid.
+            int mouseXRelativeToGrid = cellBounds.Left + e.X;
+            int mouseYRelativeToGrid = cellBounds.Top + e.Y;
+
+            // --- Icon Position Calculation (MUST match Paint method's logic) ---
+            int rowHeadersWidth = grid.RowHeadersVisible ? grid.RowHeadersWidth : 0;
+            int groupLevelIndentation = _group!.Level * GlobalStaticValues.GroupLevelMultiplier;
+
+            int iconWidth = 11; // Width of the icon
+            int iconHeight = 11; // Height of the icon
+
+            // Calculate the icon's X-coordinate relative to the grid's client area.
+            // This is the X where the icon *starts* drawing.
+            // Matches iconX from Paint: contentBounds.Left + 4 + groupLevelIndentation,
+            // where contentBounds.Left is (rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset)
+            int iconDisplayX = rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + 4 + groupLevelIndentation;
+
+            // Calculate the icon's Y-coordinate relative to the grid's client area.
+            // This is the Y where the icon *starts* drawing.
+            // Matches iconY from Paint: rowBounds.Y + (rowBounds.Height / 2) - (iconHeight / 2)
+            int iconDisplayY = rowBounds.Y + (rowBounds.Height / 2) - (iconHeight / 2);
+
+            // Create a rectangle representing the icon's drawn area in grid coordinates.
+            Rectangle iconHitRect = new Rectangle(
+                iconDisplayX,
+                iconDisplayY,
+                iconWidth,
+                iconHeight
+            );
+
+            // Check if the adjusted mouse coordinates fall within the icon's hit rectangle.
+            if (iconHitRect.Contains(mouseXRelativeToGrid, mouseYRelativeToGrid))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /*internal bool IsIconHit(DataGridViewCellMouseEventArgs e)
+        {
             if (e.ColumnIndex < 0)
             {
                 return false;
@@ -705,37 +1416,7 @@ namespace Krypton.Toolkit
             }
 
             return false;
-        }
-
-        //internal bool IsNodeIconHit(DataGridViewCellMouseEventArgs e)
-        //{
-        //    if (e.ColumnIndex < 0) return false;
-        //    if (!this.HasChildren) return false;
-
-        //    DataGridViewCell cell = this.Cells[e.ColumnIndex];
-        //    if (cell.GetType() is KryptonDataGridViewTreeTextCell) {
-        //    cell.
-        //    }
-        //    KryptonOutlookGrid grid = (KryptonOutlookGrid)this.DataGridView;
-
-
-        //    Rectangle glyphRect = new Rectangle(rect.X + this.GlyphMargin, rect.ContentBounds.Y, INDENT_WIDTH, this.ContentBounds.Height - 1);
-
-        //    if ((e.X <= glyphRect.X + 11) &&
-        //        (e.X >= glyphRect.X) &&
-        //       (e.Y >= glyphRect.Y + (glyphRect.Height / 2) - 4) &&
-        //     (e.Y <= glyphRect.Y + (glyphRect.Height / 2) - 4 + 11))
-
-
-        //    if (this.isGroupRow &&
-        //        (l >= rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + 4 + group.Level * StaticValues._groupLevelMultiplier) &&
-        //        (l <= rowBounds.Left + rowHeadersWidth - grid.HorizontalScrollingOffset + 4 + group.Level * StaticValues._groupLevelMultiplier + 11) &&
-        //        (e.Y >= rowBounds.Height - 18) &&
-        //        (e.Y <= rowBounds.Height - 7))
-        //        return true;
-
-        //    return false;
-        //}
+        }*/
 
         internal bool IsGroupImageHit(DataGridViewCellMouseEventArgs e)
         {

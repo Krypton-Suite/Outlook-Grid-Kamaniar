@@ -204,7 +204,7 @@
                 TxtValue2.Enabled = Operator == FilterOperators.Between || Operator == FilterOperators.NotBetween;
                 TxtValue1.Enabled = Operator switch
                 {
-                    FilterOperators.IsEmpty or FilterOperators.IsNotEmpty or FilterOperators.IsNull or FilterOperators.IsNotNull => false,
+                    FilterOperators.IsEmpty or FilterOperators.IsNotEmpty or FilterOperators.IsNull or FilterOperators.IsNotNull or FilterOperators.True or FilterOperators.False => false,
                     _ => true,
                 };
                 FilterChanged?.Invoke(this, EventArgs.Empty);
@@ -308,8 +308,14 @@
 
         private void UpdateOperatorComboBox(string dataType)
         {
+            var typ = Type.GetType($"System.{dataType}");
+            if (typ == null && dataType.Equals(typeof(bool).Name, StringComparison.OrdinalIgnoreCase))
+                typ = typeof(bool);
+            else if (typ == null && dataType.Equals(typeof(Image).Name, StringComparison.OrdinalIgnoreCase))
+                typ = typeof(Image);
+
             List<FilterOperators> operators;
-            if (dataType.Equals(typeof(string).Name, StringComparison.OrdinalIgnoreCase))
+            if (typ == typeof(string))
             {
                 operators =
                 [
@@ -327,13 +333,8 @@
                     FilterOperators.IsNotNull
                 ];
             }
-            else if (dataType.Equals(typeof(DateTime).Name, StringComparison.OrdinalIgnoreCase) ||
-                dataType.Equals(typeof(int).Name, StringComparison.OrdinalIgnoreCase) ||
-                dataType.Equals(typeof(Int16).Name, StringComparison.OrdinalIgnoreCase) ||
-                dataType.Equals(typeof(Int32).Name, StringComparison.OrdinalIgnoreCase) ||
-                dataType.Equals(typeof(Int64).Name, StringComparison.OrdinalIgnoreCase) ||
-                dataType.Equals(typeof(double).Name, StringComparison.OrdinalIgnoreCase) ||
-                dataType.Equals(typeof(float).Name, StringComparison.OrdinalIgnoreCase))
+            else if (typ == typeof(DateTime) ||
+                typ.IsNumeric())
             {
                 operators =
                 [
@@ -348,11 +349,27 @@
                     FilterOperators.IsNull,
                     FilterOperators.IsNotNull
                 ];
-                /*if (!dataType.Equals(typeof(DateTime).Name, StringComparison.OrdinalIgnoreCase))
+                /*if (typ != typeof(DateTime))
                 {
                     operators.Add(FilterOperators.In);
                     operators.Add(FilterOperators.NotIn);
                 }*/
+            }
+            else if (typ == typeof(bool))
+            {
+                operators =
+                [
+                    FilterOperators.True,
+                    FilterOperators.False
+                ];
+            }
+            else if (typ == typeof(Image))
+            {
+                operators =
+                [
+                    FilterOperators.IsNull,
+                    FilterOperators.IsNotNull
+                ];
             }
             else
             {
@@ -425,6 +442,8 @@
                 case FilterOperators.IsNotEmpty:
                 case FilterOperators.IsNull:
                 case FilterOperators.IsNotNull:
+                case FilterOperators.True:
+                case FilterOperators.False:
                     break;
                 default:
                     if (TxtValue1.Text.Trim().Length == 0)

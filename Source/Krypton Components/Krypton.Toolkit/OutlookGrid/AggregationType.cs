@@ -18,6 +18,10 @@
         /// </summary>
         Count,
         /// <summary>
+        /// Calculates the average of numeric values in the group.
+        /// </summary>
+        Average,
+        /// <summary>
         /// Finds the minimum value in the group.
         /// </summary>
         Min,
@@ -26,9 +30,9 @@
         /// </summary>
         Max,
         /// <summary>
-        /// Calculates the average of numeric values in the group.
+        /// Finds the minimum and maximum value in the group.
         /// </summary>
-        Average
+        MinMax
     }
 
 }

@@ -297,8 +297,10 @@ namespace Krypton.Toolkit
                 "NOT ENDSWITH" => Expression.Not(BuildEndsWithExpression(left, valueString, targetPropertyType)),
                 "BETWEEN" => BuildBetween(left, valueString, value2String, targetPropertyType),
                 "NOT BETWEEN" => Expression.Not(BuildBetween(left, valueString, value2String, targetPropertyType)),
-                "IS NULL" => Expression.Equal(left, Expression.Constant(null, targetPropertyType ?? typeof(object))),
-                "IS NOT NULL" => Expression.NotEqual(left, Expression.Constant(null, targetPropertyType ?? typeof(object))),
+                "IS NULL" => Expression.Equal(left, Expression.Constant(null, typeof(object))),
+                "IS NOT NULL" => Expression.NotEqual(left, Expression.Constant(null, typeof(object))),
+                "TRUE" => BuildComparison(left, "=", true.ToString(), targetPropertyType),
+                "FALSE" => BuildComparison(left, "=", false.ToString(), targetPropertyType),
                 _ => throw new FormatException($"Unsupported operator '{op}'."),
             };
             return expression;
@@ -466,25 +468,15 @@ namespace Krypton.Toolkit
             {
                 Type nonNullableEffectiveTargetType = Nullable.GetUnderlyingType(effectiveTargetType) ?? effectiveTargetType;
 
-                if (nonNullableEffectiveTargetType == typeof(int) && int.TryParse(valueString, NumberStyles.Integer, CultureInfo.InvariantCulture, out int intVal))
+                if (nonNullableEffectiveTargetType.IsInteger())
                 {
-                    parsedValue = intVal;
+                    parsedValue = valueString.ToInteger();
                     inferredValueType = typeof(int);
                 }
-                else if (nonNullableEffectiveTargetType == typeof(long) && long.TryParse(valueString, NumberStyles.Integer, CultureInfo.InvariantCulture, out long longVal))
+                else if (nonNullableEffectiveTargetType.IsDouble())
                 {
-                    parsedValue = longVal;
-                    inferredValueType = typeof(long);
-                }
-                else if (nonNullableEffectiveTargetType == typeof(double) && double.TryParse(valueString, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleVal))
-                {
-                    parsedValue = doubleVal;
+                    parsedValue = valueString.ToDouble();
                     inferredValueType = typeof(double);
-                }
-                else if (nonNullableEffectiveTargetType == typeof(decimal) && decimal.TryParse(valueString, NumberStyles.Float, CultureInfo.InvariantCulture, out decimal decimalVal))
-                {
-                    parsedValue = decimalVal;
-                    inferredValueType = typeof(decimal);
                 }
                 else if (nonNullableEffectiveTargetType == typeof(bool) && bool.TryParse(valueString, out bool boolVal))
                 {

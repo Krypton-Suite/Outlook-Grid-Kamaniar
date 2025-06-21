@@ -105,7 +105,17 @@
         /// Value is not null.
         /// </summary>
         [Description("IS NOT NULL")]
-        IsNotNull
+        IsNotNull,
+        /// <summary>
+        /// Value is true.
+        /// </summary>
+        [Description("TRUE")]
+        True,
+        /// <summary>
+        /// Value is true.
+        /// </summary>
+        [Description("FALSE")]
+        False
     }
 
     /*/// <summary>

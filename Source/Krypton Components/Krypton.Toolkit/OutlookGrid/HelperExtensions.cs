@@ -1,12 +1,56 @@
-﻿using System.Data.Common;
-using System.Linq.Expressions;
+﻿namespace Krypton.Toolkit;
 
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.Tab;
-
-namespace Krypton.Toolkit;
-
+/// <summary>
+/// Provides a collection of static extension methods that add functionality to existing types.
+/// These methods enhance readability and simplify common operations across different parts of the application.
+/// </summary>
 public static class HelperExtensions
 {
+
+#if NETFRAMEWORK
+    /// <summary>
+    /// Checks if a string contains another string using the specified string comparison type.
+    /// This extension method is only available in the .NET Framework.
+    /// </summary>
+    /// <param name="source">The string to search within.</param>
+    /// <param name="toCheck">The string to search for.</param>
+    /// <param name="comparison">One of the enumeration values that specifies the rules for the search.</param>
+    /// <returns><c>true</c> if the <paramref name="toCheck"/> parameter occurs within the <paramref name="source"/> parameter; otherwise, <c>false</c>.</returns>
+    public static bool Contains(this string source, string toCheck, StringComparison comparison) =>
+        !string.IsNullOrEmpty(source) && !string.IsNullOrEmpty(toCheck) && source.IndexOf(toCheck, comparison) >= 0;
+#endif
+
+    /// <summary>
+    /// Determines whether an object is numeric by attempting to parse it as a double.
+    /// </summary>
+    /// <param name="value">The object to check.</param>
+    /// <returns><c>true</c> if the object can be parsed as a double; otherwise, <c>false</c>.</returns>
+    public static bool IsNumeric(this object value) =>
+        value is not null && double.TryParse(value.ToString(), out _);
+
+    /// <summary>
+    /// Determines whether the specified string represents a valid date based on the current system's culture settings.
+    /// </summary>
+    /// <param name="value">The string to check.</param>
+    /// <returns>True if the string can be parsed as a date, false otherwise.</returns>
+    public static bool IsDate(this string value)
+    {
+        // 1. Handle null or empty strings upfront.
+        // DateTime.TryParse also handles this, but it's good for clarity.
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        // Use DateTime.TryParse for robust validation based on the current system's culture.
+        // It tries to parse the string and returns true if successful, false otherwise.
+        // The 'out _' discards the parsed DateTime result as we only need the boolean.
+        return DateTime.TryParse(
+            value,   // The string to parse
+            out _    // Discard the parsed DateTime result
+        );
+    }
+
 
     /// <summary>
     /// Converts an object to a string. If the object is null, returns an empty string.
@@ -18,7 +62,7 @@ public static class HelperExtensions
         return obj?.ToString() ?? "";
     }
 
-    /*/// <summary>
+    /// <summary>
     /// Converts an object to an integer. If conversion fails, returns 0.
     /// </summary>
     /// <param name="obj">The object to convert.</param>
@@ -31,17 +75,7 @@ public static class HelperExtensions
             return result;
         }
         return 0;
-    }*/
-
-    /// <summary>
-    /// Converts an object to an integer. Returns 0 if the object is null, whitespace, or if the conversion to an integer fails.
-    /// </summary>
-    /// <param name="value">The object to attempt conversion from.</param>
-    /// <returns>The integer representation of the object, or 0 if the object is null, whitespace, or cannot be parsed as an integer.</returns>
-    public static int ToInteger(this object? value) =>
-        value is null || string.IsNullOrWhiteSpace(value.ToStringNull())
-            ? 0
-            : int.TryParse(value.ToStringNull(), out int result) ? result : 0;
+    }
 
     /// <summary>
     /// Converts an object to a long integer. If conversion fails, returns 0L.
@@ -185,6 +219,45 @@ public static class HelperExtensions
     /// <returns><c>true</c> if the <paramref name="type"/> is an numeric type (or a nullable numeric type); otherwise, <c>false</c>.</returns>
     public static bool IsNumeric(this Type? type) =>
         type is not null && numericTypes.Contains(Nullable.GetUnderlyingType(type) ?? type);
+
+    /// <summary>
+    /// A HashSet containing all the non-nullable integer types in .NET.
+    /// </summary>
+    private static readonly HashSet<Type> IntegerTypes = new()
+    {
+        typeof(sbyte), typeof(byte), typeof(short), typeof(ushort),
+        typeof(int), typeof(uint), typeof(long), typeof(ulong),
+        typeof(Int16), typeof(UInt16), typeof(Int32), typeof(UInt32),
+        typeof(Int64), typeof(UInt64)
+    };
+
+    /// <summary>
+    /// A HashSet containing all the non-nullable floating-point number types in .NET.
+    /// </summary>
+    private static readonly HashSet<Type> FloatingPointTypes = new()
+    {
+        typeof(double), typeof(float), typeof(decimal)
+    };
+
+    /// <summary>
+    /// Checks if a given <see cref="Type"/> represents an integer type. This method
+    /// considers both nullable (e.g., <c>int?</c>) and non-nullable (e.g., <c>int</c>)
+    /// integer types.
+    /// </summary>
+    /// <param name="type">The <see cref="Type"/> to check.</param>
+    /// <returns><c>true</c> if the <paramref name="type"/> is an integer type (or a nullable integer type); otherwise, <c>false</c>.</returns>
+    public static bool IsInteger(this Type? type) =>
+        type is not null && IntegerTypes.Contains(Nullable.GetUnderlyingType(type) ?? type);
+
+    /// <summary>
+    /// Checks if a given <see cref="Type"/> represents a floating-point number type.
+    /// This method considers both nullable (e.g., <c>double?</c>) and non-nullable
+    /// (e.g., <c>double</c>, <c>float</c>, <c>decimal</c>) floating-point types.
+    /// </summary>
+    /// <param name="type">The <see cref="Type"/> to check.</param>
+    /// <returns><c>true</c> if the <paramref name="type"/> is a floating-point number type (or a nullable floating-point type); otherwise, <c>false</c>.</returns>
+    public static bool IsDouble(this Type? type) =>
+        type is not null && FloatingPointTypes.Contains(Nullable.GetUnderlyingType(type) ?? type);
 
     /// <summary>
     /// Converts a string value to an enum of the specified type <typeparamref name="T"/>.
@@ -383,7 +456,4 @@ public static class HelperExtensions
 
     #endregion Generate Sql Filter String
 
-
 }
-
-

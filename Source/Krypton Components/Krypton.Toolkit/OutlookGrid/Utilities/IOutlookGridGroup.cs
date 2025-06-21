@@ -2,7 +2,7 @@
 {
     /// <summary>
     /// IOutlookGridGroup specifies the interface of any implementation of a OutlookGridGroup class
-    /// Each implementation of the IOutlookGridGroup can override the behaviour of the grouping mechanism
+    /// Each implementation of the IOutlookGridGroup can override the behavior of the grouping mechanism
     /// Notice also that ICloneable must be implemented. The OutlookGrid makes use of the Clone method of the Group
     /// to create new Group clones. Related to this is the OutlookGrid.GroupTemplate property, which determines what
     /// type of Group must be cloned.
@@ -101,5 +101,12 @@
         /// Gets or sets the items comparer, if overriding the default IComparable is needed
         /// </summary>
         IComparer? ItemsComparer { get; set; }
+
+        /// <summary>
+        /// the text to be displayed for the summary on collapsed group
+        /// </summary>
+        string SummaryText { get; }
+
+        OutlookGridRow? SummaryRow { get; set; }
     }
 }

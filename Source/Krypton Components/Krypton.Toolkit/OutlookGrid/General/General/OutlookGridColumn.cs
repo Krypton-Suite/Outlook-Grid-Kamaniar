@@ -173,15 +173,16 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>Initializes a new instance of the <see cref="OutlookGridColumn" /> class.</summary>
-        /// <param name="dataGridViewColumn">The data grid view column.</param>
+        /// <param name="col">The data grid view column.</param>
         /// <param name="group">The group.</param>
         /// <param name="sortOrder">The sort order.</param>
         /// <param name="groupIndex">Index of the group.</param>
         /// <param name="sortIndex">Index of the sort.</param>
         /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
-        public OutlookGridColumn(DataGridViewColumn dataGridViewColumn, IOutlookGridGroup? group, SortOrder sortOrder, int groupIndex, int sortIndex, AggregationType aggregationType = AggregationType.None)
+        public OutlookGridColumn(DataGridViewColumn col, IOutlookGridGroup? group, SortOrder sortOrder, int groupIndex, int sortIndex, AggregationType aggregationType = AggregationType.None)
         {
-            DataGridViewColumn = dataGridViewColumn;
+            DataGridViewColumn = col;
+            Name = col?.Name;
             GroupingType = group;
             SortDirection = sortOrder;
             GroupIndex = groupIndex;
@@ -237,9 +238,110 @@ namespace Krypton.Toolkit
         public AggregationType AggregationType { get; set; }
 
         /// <summary>
-        /// Gets or sets the format string for displaying the aggregated value (e.g., "C" for currency, "N0" for number with no decimals).
+        /// Gets or sets the format string for displaying the aggregated value in summary rows.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This property defines the overall text format for a cell in a summary row (group footer or grand total row).
+        /// It uses standard <see cref="string.Format(string, object[])"/> indexed placeholders to embed relevant information.
+        /// </para>
+        /// <para>
+        /// **Placeholder Convention:**
+        /// <list type="table">
+        ///     <listheader>
+        ///         <term>Placeholder</term>
+        ///         <description>Description</description>
+        ///     </listheader>
+        ///     <item>
+        ///         <term>{0}</term>
+        ///         <description>The group's identifying text (e.g., the value of the grouped column for a subtotal row, or "Grand Total" for a grand total row).</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>{1}</term>
+        ///         <description>The <see cref="AggregationType"/> of the column (e.g., "Sum", "Count", "Average") as a string.</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>{2}</term>
+        ///         <description>The calculated aggregated value, already formatted according to the column's <see cref="System.Windows.Forms.DataGridViewCellStyle.Format"/> property.</description>
+        ///     </item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// **Examples:**
+        /// <list type="bullet">
+        ///     <item>
+        ///         <term><c>"{1}: {2}"</c></term>
+        ///         <description>Displays "Sum: 1,234.56" or "Count: 42". This is a common simple format.</description>
+        ///     </item>
+        ///     <item>
+        ///         <term><c>"{0} - Total {1}: {2}"</c></term>
+        ///         <description>Displays "Electronics - Total Sum: $1,234.56". Useful when you want to explicitly include the group name.</description>
+        ///     </item>
+        ///     <item>
+        ///         <term><c>"({1}): {2}"</c></term>
+        ///         <description>Displays "(Sum): 1,234". Often used for value columns.</description>
+        ///     </item>
+        ///     <item>
+        ///         <term><c>"{2}"</c></term>
+        ///         <description>Displays only the formatted aggregated value. Useful for <see cref="AggregationType.MinMax"/> where the value itself might already be a descriptive string like "2024-01-01 - 2024-12-31".</description>
+        ///     </item>
+        /// </list>
+        /// </para>
+        /// </remarks>
         public string? AggregationFormatString { get; set; }
+
+        /*/// <summary>
+        /// Gets or sets the format string for displaying the aggregated value in summary rows.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This property defines the overall text format for a cell in a summary row (group footer or grand total row).
+        /// It supports custom named placeholders that will be replaced with the corresponding values.
+        /// </para>
+        /// <para>
+        /// **Named Placeholder Convention:**
+        /// <list type="table">
+        ///     <listheader>
+        ///         <term>Placeholder</term>
+        ///         <description>Replacement Value</description>
+        ///     </listheader>
+        ///     <item>
+        ///         <term>{GroupText}</term>
+        ///         <description>The group's identifying text (e.g., the value of the grouped column for a subtotal row, or "Grand Total" for a grand total row).</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>{Aggregate}</term>
+        ///         <description>The <see cref="AggregationType"/> of the column (e.g., "Sum", "Count", "Average") as a string.</description>
+        ///     </item>
+        ///     <item>
+        ///         <term>{Value}</term>
+        ///         <description>The calculated aggregated value, already formatted according to the column's <see cref="System.Windows.Forms.DataGridViewCellStyle.Format"/> property.</description>
+        ///     </item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// **Examples:**
+        /// <list type="bullet">
+        ///     <item>
+        ///         <term><c>"{Aggregate}: {Value}"</c></term>
+        ///         <description>Displays "Sum: 1,234.56" or "Count: 42". This is a common simple format.</description>
+        ///     </item>
+        ///     <item>
+        ///         <term><c>"{GroupText} - Total {Aggregate}: {Value}"</c></term>
+        ///         <description>Displays "Electronics - Total Sum: $1,234.56". Useful when you want to explicitly include the group name.</description>
+        ///     </item>
+        ///     <item>
+        ///         <term><c>"({Aggregate}): {Value}"</c></term>
+        ///         <description>Displays "(Sum): 1,234". Often used for value columns.</description>
+        ///     </item>
+        ///     <item>
+        ///         <term><c>"{Value}"</c></term>
+        ///         <description>Displays only the formatted aggregated value. Useful for <see cref="AggregationType.MinMax"/> where the value itself might already be a descriptive string like "2024-01-01 - 2024-12-31".</description>
+        ///     </item>
+        /// </list>
+        /// </para>
+        /// </remarks>
+        public string? AggregationFormatString { get; set; }*/
 
         /// <summary>
         /// Gets the list of <see cref="FilterField"/> objects representing the current filter configuration.
