@@ -8,83 +8,83 @@
     /// providing data for changes in menu button selections related to group AND/OR operations.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
-    public delegate void GroupSelectedAndOrEventHandler(object sender, MenuButtonSelectionChangedEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterGroupSelectedAndOrEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle the <c>GroupSelectedEnd</c> event,
     /// providing data for changes in menu button selections when a group selection ends.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
-    public delegate void GroupSelectedEndEventHandler(object sender, MenuButtonSelectionChangedEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterGroupSelectedEndEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle the <c>GroupSelectedDelete</c> event,
     /// providing data for changes in menu button selections when a group is about to be deleted.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
-    public delegate void GroupSelectedDeleteEventHandler(object sender, MenuButtonSelectionChangingEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterGroupSelectedDeleteEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle the <c>GroupSelectedInsert</c> event,
     /// providing data for changes in menu button selections when a group is about to be inserted.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
-    public delegate void GroupSelectedInsertEventHandler(object sender, MenuButtonSelectionChangingEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterGroupSelectedInsertEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle the <c>GroupSelectedMakeSubGroup</c> event,
     /// providing data for changes in menu button selections when a group is about to be made into a subgroup.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
-    public delegate void GroupSelectedMakeSubGroupEventHandler(object sender, MenuButtonSelectionChangingEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterGroupSelectedMakeSubGroupEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e);
 
 
     /// <summary>
     /// Represents the method that will handle events related to AND/OR operations on a selected item.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
-    public delegate void SelectedAndOrEventHandler(object sender, MenuButtonSelectionChangedEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterSelectedAndOrEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle events when the selection ends for an item.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
-    public delegate void SelectedEndEventHandler(object sender, MenuButtonSelectionChangedEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterSelectedEndEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle events when a selected item is about to be deleted.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
-    public delegate void SelectedDeleteEventHandler(object sender, MenuButtonSelectionChangingEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterSelectedDeleteEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle events when an item is about to be inserted after a selection.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
-    public delegate void SelectedInsertEventHandler(object sender, MenuButtonSelectionChangingEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterSelectedInsertEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle events when a selected item is about to be made into a subgroup.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
-    public delegate void SelectedMakeSubgroupEventHandler(object sender, MenuButtonSelectionChangingEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterSelectedMakeSubgroupEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle events when a filter has changed.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">An <see cref="EventArgs"/> that contains the event data.</param>
-    public delegate void FilterChangedEventHandler(object sender, EventArgs e);
+    public delegate void KryptonOutlookGridFilterFilterChangedEventHandler(object sender, EventArgs e);
 
 
     /// <summary>
@@ -92,16 +92,16 @@
     /// providing data for changes in menu button selections.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
-    public delegate void SelectionChangedEventHandler(object sender, MenuButtonSelectionChangedEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterSelectionChangedEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs e);
 
     /// <summary>
     /// Represents the method that will handle the <c>SelectionChanging</c> event,
     /// providing data for menu button selections that are about to change.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="MenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
-    public delegate void SelectionChangingEventHandler(object sender, MenuButtonSelectionChangingEventArgs e);
+    /// <param name="e">A <see cref="KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs"/> that contains the event data.</param>
+    public delegate void KryptonOutlookGridFilterSelectionChangingEventHandler(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e);
 
     #endregion Delegates
 
@@ -111,7 +111,7 @@
     ///   The event args when the menu button selection is changed
     /// </summary>
     /// <remarks>Exposes the index of the selected value</remarks>
-    public class MenuButtonSelectionChangedEventArgs : EventArgs
+    public class KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs : EventArgs
     {
 
         #region Private Variables
@@ -162,7 +162,7 @@
         /// </summary>
         /// <param name="newSelectedIndex">Sets the NewSelectedIndex Property</param>
         /// <param name="oldSelectedINdex">Sets the OldSelectedIndex Property</param>
-        public MenuButtonSelectionChangedEventArgs(int newSelectedIndex, int oldSelectedINdex)
+        public KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs(int newSelectedIndex, int oldSelectedINdex)
         {
             this.NewSelectedIndex = newSelectedIndex;
             this.OldSelectedIndex = oldSelectedINdex;
@@ -176,7 +176,7 @@
     ///   The event args when the menu button selection is changed
     /// </summary>
     /// <remarks>Exposes the index of the selected value</remarks>
-    public class MenuButtonSelectionChangingEventArgs : EventArgs
+    public class KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs : EventArgs
     {
 
         #region Private Variables
@@ -223,7 +223,7 @@
         /// <summary>
         ///  Constructor
         /// </summary>
-        public MenuButtonSelectionChangingEventArgs(int newSelectedIndex, int oldSelectedINdex)
+        public KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs(int newSelectedIndex, int oldSelectedINdex)
         {
             this.NewSelectedIndex = newSelectedIndex;
             this.OldSelectedIndex = oldSelectedINdex;

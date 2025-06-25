@@ -1,6 +1,6 @@
 ﻿namespace Krypton.Toolkit
 {
-    partial class Filter
+    partial class KryptonOutlookGridFilter
     {
         /// <summary>
         /// Required designer variable.
@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.FlowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
-            this.FilterItemGroup1 = new Krypton.Toolkit.FilterItemGroup();
+            this.FilterItemGroup1 = new Krypton.Toolkit.KryptonOutlookGridFilterItemGroup();
             this.FlowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
             this.arkTableLayoutPanelEx1 = new System.Windows.Forms.TableLayoutPanel();
             this.TpActions = new System.Windows.Forms.TableLayoutPanel();
@@ -37,7 +37,7 @@
             this.BtnClear = new Krypton.Toolkit.KryptonButton();
             this.BtnCancel = new Krypton.Toolkit.KryptonButton();
             this.PnlMain = new Krypton.Toolkit.KryptonPanel();
-            this.newGroup = new Krypton.Toolkit.FilterItemGroup();
+            this.newGroup = new Krypton.Toolkit.KryptonOutlookGridFilterItemGroup();
             this.FlowLayoutPanel1.SuspendLayout();
             this.FlowLayoutPanel2.SuspendLayout();
             this.arkTableLayoutPanelEx1.SuspendLayout();
@@ -55,7 +55,6 @@
             this.FlowLayoutPanel1.Controls.Add(this.FilterItemGroup1);
             this.FlowLayoutPanel1.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.FlowLayoutPanel1.Location = new System.Drawing.Point(3, 3);
-            this.FlowLayoutPanel1.MaximumSize = new System.Drawing.Size(700, 0);
             this.FlowLayoutPanel1.Name = "FlowLayoutPanel1";
             this.FlowLayoutPanel1.Size = new System.Drawing.Size(199, 50);
             this.FlowLayoutPanel1.TabIndex = 1;
@@ -80,7 +79,7 @@
             this.FlowLayoutPanel2.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.FlowLayoutPanel2.Location = new System.Drawing.Point(0, 0);
             this.FlowLayoutPanel2.Name = "FlowLayoutPanel2";
-            this.FlowLayoutPanel2.Size = new System.Drawing.Size(260, 87);
+            this.FlowLayoutPanel2.Size = new System.Drawing.Size(264, 103);
             this.FlowLayoutPanel2.TabIndex = 3;
             // 
             // arkTableLayoutPanelEx1
@@ -160,7 +159,7 @@
             this.PnlMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.PnlMain.Location = new System.Drawing.Point(0, 0);
             this.PnlMain.Name = "PnlMain";
-            this.PnlMain.Size = new System.Drawing.Size(260, 87);
+            this.PnlMain.Size = new System.Drawing.Size(264, 103);
             this.PnlMain.TabIndex = 4;
             // 
             // newGroup
@@ -180,7 +179,7 @@
             this.AutoScroll = true;
             this.AutoSize = true;
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.ClientSize = new System.Drawing.Size(260, 87);
+            this.ClientSize = new System.Drawing.Size(264, 103);
             this.Controls.Add(this.PnlMain);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -204,8 +203,8 @@
 
         }
         internal System.Windows.Forms.FlowLayoutPanel FlowLayoutPanel1;
-        internal FilterItemGroup FilterItemGroup1;
-        internal FilterItemGroup newGroup;
+        internal KryptonOutlookGridFilterItemGroup FilterItemGroup1;
+        internal KryptonOutlookGridFilterItemGroup newGroup;
         internal System.Windows.Forms.FlowLayoutPanel FlowLayoutPanel2;
 
         #endregion

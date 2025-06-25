@@ -5,20 +5,20 @@ namespace Krypton.Toolkit
     /// <summary>
     /// <see cref="Expression{T}"/>
     /// </summary>
-    public static class ExpressionBuilder
+    internal static class ExpressionBuilder
     {
 
         /// <summary>
-        /// Converts a list of <see cref="FilterField"/> objects into an <see cref="Expression{T}"/>
+        /// Converts a list of <see cref="KryptonOutlookGridFilterField"/> objects into an <see cref="Expression{T}"/>
         /// that can be used for filtering data of type <typeparamref name="T"/>.
-        /// This extension method supports hierarchical grouping of filters based on <see cref="FilterField.GroupInfo"/>.
+        /// This extension method supports hierarchical grouping of filters based on <see cref="KryptonOutlookGridFilterField.GroupInfo"/>.
         /// </summary>
         /// <typeparam name="T">The type of objects to which the expression will be applied.</typeparam>
-        /// <param name="filters">The list of <see cref="FilterField"/> objects to convert into an expression.</param>
+        /// <param name="filters">The list of <see cref="KryptonOutlookGridFilterField"/> objects to convert into an expression.</param>
         /// <param name="columns">Optional: A <see cref="DataGridViewColumnCollection"/> to provide context for column names and types,
         /// used by the internal <see cref="GetExpression{T}"/> method.</param>
         /// <returns>An <see cref="Expression{T}"/> representing the combined filter logic.</returns>
-        public static Expression<Func<T, bool>> ToExpression<T>(this List<FilterField> filters, DataGridViewColumnCollection? columns = null)
+        public static Expression<Func<T, bool>> ToExpression<T>(this List<KryptonOutlookGridFilterField> filters, DataGridViewColumnCollection? columns = null)
         {
             ParameterExpression parameter = Expression.Parameter(typeof(T), "p"); // 'p' is the common alias for the root object
             Expression expression = null!;
@@ -51,16 +51,16 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Restructures a flat list of <see cref="FilterField"/> objects into a hierarchical representation
-        /// by populating their <see cref="FilterField.SubGroups"/> property based on their <see cref="FilterField.GroupInfo"/>.
+        /// Restructures a flat list of <see cref="KryptonOutlookGridFilterField"/> objects into a hierarchical representation
+        /// by populating their <see cref="KryptonOutlookGridFilterField.SubGroups"/> property based on their <see cref="KryptonOutlookGridFilterField.GroupInfo"/>.
         /// This method identifies and groups related filters, creating a tree-like structure for complex filter logic.
         /// </summary>
-        /// <param name="filters">The flat list of <see cref="FilterField"/> objects to be organized.</param>
+        /// <param name="filters">The flat list of <see cref="KryptonOutlookGridFilterField"/> objects to be organized.</param>
         /// <returns>A list of top-level filter groups, where each group might contain further subgroups.</returns>
-        private static List<List<FilterField>> PopulateSubGroups(List<FilterField> filters)
+        private static List<List<KryptonOutlookGridFilterField>> PopulateSubGroups(List<KryptonOutlookGridFilterField> filters)
         {
-            List<List<FilterField>> topLevelFilters = [];
-            List<FilterField> usedFilter = [];
+            List<List<KryptonOutlookGridFilterField>> topLevelFilters = [];
+            List<KryptonOutlookGridFilterField> usedFilter = [];
 
             foreach (var filter in filters)
             {
@@ -93,16 +93,16 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Recursively searches for a parent <see cref="FilterField"/> within a hierarchical list of filter groups
+        /// Recursively searches for a parent <see cref="KryptonOutlookGridFilterField"/> within a hierarchical list of filter groups
         /// based on a specified <paramref name="groupName"/>.
         /// This method is crucial for locating the correct position to insert or link subgroups.
         /// </summary>
         /// <param name="topLevelFilters">The initial list of top-level filter groups to begin the search from.</param>
-        /// <param name="groupName">The full <see cref="FilterField.GroupInfo"/> string of the parent filter to find.
+        /// <param name="groupName">The full <see cref="KryptonOutlookGridFilterField.GroupInfo"/> string of the parent filter to find.
         /// This typically includes dot-separated parts representing the hierarchy (e.g., "1.1", "1.2.3").</param>
-        /// <returns>The <see cref="FilterField"/> instance that matches the parent identified by <paramref name="groupName"/>,
+        /// <returns>The <see cref="KryptonOutlookGridFilterField"/> instance that matches the parent identified by <paramref name="groupName"/>,
         /// or <see langword="null"/> if no matching parent is found.</returns>
-        private static FilterField FindInChild(List<List<FilterField>> topLevelFilters, string groupName)
+        private static KryptonOutlookGridFilterField FindInChild(List<List<KryptonOutlookGridFilterField>> topLevelFilters, string groupName)
         {
             string searchFor = groupName;
             string[] groupParts = groupName.Split('.');
@@ -112,7 +112,7 @@ namespace Krypton.Toolkit
                 return null!;
 
             string currentGroupName = searchFor;
-            List<FilterField> filterGroup = null!;
+            List<KryptonOutlookGridFilterField> filterGroup = null!;
 
             // Search for the top-level filter group
             while (filterGroup == null && !string.IsNullOrEmpty(currentGroupName))
@@ -141,17 +141,17 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Recursively searches within the subgroups of a given <paramref name="filterGroup"/> for a <see cref="FilterField"/>
-        /// whose <see cref="FilterField.GroupInfo"/> matches the target <paramref name="searchFor"/> string.
+        /// Recursively searches within the subgroups of a given <paramref name="filterGroup"/> for a <see cref="KryptonOutlookGridFilterField"/>
+        /// whose <see cref="KryptonOutlookGridFilterField.GroupInfo"/> matches the target <paramref name="searchFor"/> string.
         /// This method navigates down the hierarchical filter structure.
         /// </summary>
-        /// <param name="filterGroup">The current list of <see cref="FilterField"/> objects representing a group to search within.</param>
-        /// <param name="remainingGroupParts">An array of strings representing the remaining parts of the <see cref="FilterField.GroupInfo"/>
+        /// <param name="filterGroup">The current list of <see cref="KryptonOutlookGridFilterField"/> objects representing a group to search within.</param>
+        /// <param name="remainingGroupParts">An array of strings representing the remaining parts of the <see cref="KryptonOutlookGridFilterField.GroupInfo"/>
         /// to be matched in the recursive search. This helps in navigating the hierarchy level by level.</param>
-        /// <param name="searchFor">The complete <see cref="FilterField.GroupInfo"/> string that is being sought.</param>
-        /// <returns>The <see cref="FilterField"/> object that matches the <paramref name="searchFor"/> GroupInfo if found within the subgroups,
-        /// otherwise returns the last <see cref="FilterField"/> of the initial <paramref name="filterGroup"/> (which might not be the exact match but the closest found parent).</returns>
-        private static FilterField FindInSubGroups(List<FilterField> filterGroup, string[] remainingGroupParts, string searchFor)
+        /// <param name="searchFor">The complete <see cref="KryptonOutlookGridFilterField.GroupInfo"/> string that is being sought.</param>
+        /// <returns>The <see cref="KryptonOutlookGridFilterField"/> object that matches the <paramref name="searchFor"/> GroupInfo if found within the subgroups,
+        /// otherwise returns the last <see cref="KryptonOutlookGridFilterField"/> of the initial <paramref name="filterGroup"/> (which might not be the exact match but the closest found parent).</returns>
+        private static KryptonOutlookGridFilterField FindInSubGroups(List<KryptonOutlookGridFilterField> filterGroup, string[] remainingGroupParts, string searchFor)
         {
             // If no more parts to search for, return the last filter
             if (remainingGroupParts.Length == 0)
@@ -189,17 +189,17 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Builds an <see cref="Expression"/> for a given list of <see cref="FilterField"/> objects.
+        /// Builds an <see cref="Expression"/> for a given list of <see cref="KryptonOutlookGridFilterField"/> objects.
         /// This is an internal recursive method used to construct the boolean logic for filtering.
         /// It iterates through the filters, combining individual filter expressions with logical AND/OR conjunctions.
         /// </summary>
         /// <typeparam name="T">The type of the objects to be filtered.</typeparam>
-        /// <param name="filters">The list of <see cref="FilterField"/> objects to build the expression from.</param>
+        /// <param name="filters">The list of <see cref="KryptonOutlookGridFilterField"/> objects to build the expression from.</param>
         /// <param name="parameter">The <see cref="ParameterExpression"/> representing the object being filtered.</param>
         /// <param name="columns">Optional: A <see cref="DataGridViewColumnCollection"/> to provide context for column names and types,
         /// used by the internal <see cref="GetExpression{T}"/> method.</param>
         /// <returns>An <see cref="Expression"/> that represents the combined filter criteria.</returns>
-        private static Expression GetFilter<T>(this List<FilterField> filters, Expression parameter, DataGridViewColumnCollection? columns = null)
+        private static Expression GetFilter<T>(this List<KryptonOutlookGridFilterField> filters, Expression parameter, DataGridViewColumnCollection? columns = null)
         {
             Expression expressions = null!;
             string lastConjunction = "";
@@ -998,7 +998,7 @@ namespace Krypton.Toolkit
                 }
                 if (underlyingType == typeof(DateTime))
                 {
-                    return DateTime.Parse(cleanedValue, CultureInfo.InvariantCulture);
+                    return cleanedValue.ToDateTime();
                 }
                 if (underlyingType == typeof(Guid))
                 {

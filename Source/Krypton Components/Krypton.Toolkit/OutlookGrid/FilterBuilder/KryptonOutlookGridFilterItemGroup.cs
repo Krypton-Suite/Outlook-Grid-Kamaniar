@@ -1,6 +1,6 @@
 ﻿namespace Krypton.Toolkit
 {
-    internal partial class FilterItemGroup : UserControl, IFilterItem
+    internal partial class KryptonOutlookGridFilterItemGroup : UserControl, IKryptonOutlookGridFilterItem
     {
 
         #region Public Delegates And Events
@@ -8,33 +8,33 @@
         /// <summary>
         /// Occurs when an AND/OR operation is selected for a group.
         /// </summary>
-        public event GroupSelectedAndOrEventHandler? GroupSelectedAndOr;
+        public event KryptonOutlookGridFilterGroupSelectedAndOrEventHandler? GroupSelectedAndOr;
 
         /// <summary>
         /// Occurs when the selection of a group has ended.
         /// </summary>
-        public event GroupSelectedEndEventHandler? GroupSelectedEnd;
+        public event KryptonOutlookGridFilterGroupSelectedEndEventHandler? GroupSelectedEnd;
 
         /// <summary>
         /// Occurs when a group is about to be deleted.
         /// </summary>
-        public event GroupSelectedDeleteEventHandler? GroupSelectedDelete;
+        public event KryptonOutlookGridFilterGroupSelectedDeleteEventHandler? GroupSelectedDelete;
 
         /// <summary>
         /// Occurs when a new item is about to be inserted into a group.
         /// </summary>
-        public event GroupSelectedInsertEventHandler? GroupSelectedInsert;
+        public event KryptonOutlookGridFilterGroupSelectedInsertEventHandler? GroupSelectedInsert;
 
         /// <summary>
         /// Occurs when the filter criteria have changed.
         /// </summary>
-        public event FilterChangedEventHandler? FilterChanged;
+        public event KryptonOutlookGridFilterFilterChangedEventHandler? FilterChanged;
 
         #endregion Public Delegates And Events
 
         #region Private Variables
 
-        private List<SourceColumn> _columns = null!;
+        private List<KryptonOutlookGridFilterSourceColumn> _columns = null!;
         private bool _PrimaryGroup;
 
         #endregion Private Variables
@@ -49,16 +49,16 @@
         }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public FilterItemMenuButton.Items SelectedMenuItem
+        public KryptonOutlookGridFilterItemMenuButton.Items SelectedMenuItem
         {
-            get { return (FilterItemMenuButton.Items)FilterGroupMenu.Item; }
-            set { FilterGroupMenu.Item = (FilterItemGroupMenuButton.Items)value; }
+            get { return (KryptonOutlookGridFilterItemMenuButton.Items)FilterGroupMenu.Item; }
+            set { FilterGroupMenu.Item = (KryptonOutlookGridFilterItemGroupMenuButton.Items)value; }
         }
 
-        public List<FilterField> FilterData => FillData();
+        public List<KryptonOutlookGridFilterField> FilterData => FillData();
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public FilterField FieldValue { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public KryptonOutlookGridFilterField FieldValue { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Filter
@@ -70,7 +70,7 @@
                 int count = 0;
 
                 //' joins each item in the collection
-                foreach (IFilterItem filterItem in FilterItems.Controls)
+                foreach (IKryptonOutlookGridFilterItem filterItem in FilterItems.Controls)
                 {
                     string tempFilter = filterItem.Filter;
                     if (tempFilter != null && tempFilter.Length > 0)
@@ -100,11 +100,11 @@
         {
             get
             {
-                if (this.SelectedMenuItem == FilterItemMenuButton.Items.AndItem)
+                if (this.SelectedMenuItem == KryptonOutlookGridFilterItemMenuButton.Items.AndItem)
                 {
                     return "AND";
                 }
-                else if (this.SelectedMenuItem == FilterItemMenuButton.Items.OrItem)
+                else if (this.SelectedMenuItem == KryptonOutlookGridFilterItemMenuButton.Items.OrItem)
                 {
                     return "OR";
                 }
@@ -117,7 +117,7 @@
 
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public List<SourceColumn> Columns
+        public List<KryptonOutlookGridFilterSourceColumn> Columns
         {
             get { return this._columns; }
             set { this._columns = value; }
@@ -143,19 +143,19 @@
 
         #region Constructors
 
-        public FilterItemGroup()
+        public KryptonOutlookGridFilterItemGroup()
         {
             InitializeComponent();
 
             FilterGroupMenu.SelectionChanged += FilterMenu_SelectionChanged;
             FilterGroupMenu.SelectionChanging += FilterMenu_SelectionChanging;
-            SelectedMenuItem = FilterItemMenuButton.Items.EndItem;
-            FilterGroupMenu.Item = FilterItemGroupMenuButton.Items.EndItem;
+            SelectedMenuItem = KryptonOutlookGridFilterItemMenuButton.Items.EndItem;
+            FilterGroupMenu.Item = KryptonOutlookGridFilterItemGroupMenuButton.Items.EndItem;
             // Sets the readable filter of the group
             SetReadableFilter();
         }
 
-        public FilterItemGroup(List<SourceColumn> columns) : this()
+        public KryptonOutlookGridFilterItemGroup(List<KryptonOutlookGridFilterSourceColumn> columns) : this()
         {
             Columns = columns;
         }
@@ -164,16 +164,16 @@
 
         #region Control Events
 
-        private void FilterItem_SelectedAndOr(object sender, MenuButtonSelectionChangedEventArgs e)
+        private void FilterItem_SelectedAndOr(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs e)
         {
             if (FilterItems.Controls.IndexOf((Control)sender) == FilterItems.Controls.Count - 1)
             {
-                this.AddFilterItem(new FilterItem(_columns));
+                this.AddFilterItem(new KryptonOutlookGridFilterItem(_columns));
             }
             SetReadableFilter();
         }
 
-        private void FilterItem_SelectedDelete(object sender, MenuButtonSelectionChangingEventArgs e)
+        private void FilterItem_SelectedDelete(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e)
         {
             //' Checks to make sure there is more than one control left
             if (FilterItems.Controls.Count > 1)
@@ -184,13 +184,13 @@
                     FilterItems.Controls.Remove((Control)sender);
 
                     //' Sets the menu item of the now last control to 'end'
-                    if (sender.GetType().Equals(typeof(FilterItem)))
+                    if (sender.GetType().Equals(typeof(KryptonOutlookGridFilterItem)))
                     {
-                        ((IFilterItem)FilterItems.Controls[FilterItems.Controls.Count - 1]).SelectedMenuItem = FilterItemMenuButton.Items.EndItem;
+                        ((IKryptonOutlookGridFilterItem)FilterItems.Controls[FilterItems.Controls.Count - 1]).SelectedMenuItem = KryptonOutlookGridFilterItemMenuButton.Items.EndItem;
                     }
                     else
                     {
-                        ((IFilterItem)FilterItems.Controls[FilterItems.Controls.Count - 1]).SelectedMenuItem = (FilterItemMenuButton.Items)FilterItemGroupMenuButton.Items.EndItem;
+                        ((IKryptonOutlookGridFilterItem)FilterItems.Controls[FilterItems.Controls.Count - 1]).SelectedMenuItem = (KryptonOutlookGridFilterItemMenuButton.Items)KryptonOutlookGridFilterItemGroupMenuButton.Items.EndItem;
                     }
                 }
                 else
@@ -202,18 +202,18 @@
             }
             else
             {
-                if (sender.GetType().Equals(typeof(FilterItem)))
+                if (sender.GetType().Equals(typeof(KryptonOutlookGridFilterItem)))
                 {
-                    ((IFilterItem)sender).SelectedMenuItem = FilterItemMenuButton.Items.EndItem;
+                    ((IKryptonOutlookGridFilterItem)sender).SelectedMenuItem = KryptonOutlookGridFilterItemMenuButton.Items.EndItem;
                 }
                 else
                 {
-                    ((IFilterItem)sender).SelectedMenuItem = (FilterItemMenuButton.Items)FilterItemGroupMenuButton.Items.EndItem;
+                    ((IKryptonOutlookGridFilterItem)sender).SelectedMenuItem = (KryptonOutlookGridFilterItemMenuButton.Items)KryptonOutlookGridFilterItemGroupMenuButton.Items.EndItem;
                 }
             }
         }
 
-        private void FilterItem_SelectedInsert(object sender, MenuButtonSelectionChangingEventArgs e)
+        private void FilterItem_SelectedInsert(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e)
         {
             int oldIndex = FilterItems.Controls.IndexOf((Control)sender);
 
@@ -223,8 +223,8 @@
                 SelectedMenuItem = FilterItemMenuButton.Items.AndItem
             };*/
 
-            FilterItem newItem = new(_columns);
-            newItem.SelectedMenuItem = FilterItemMenuButton.Items.AndItem;
+            KryptonOutlookGridFilterItem newItem = new(_columns);
+            newItem.SelectedMenuItem = KryptonOutlookGridFilterItemMenuButton.Items.AndItem;
             //' Adds the new item to the list of items in the correct location
             FilterItems.SuspendLayout();
             AddFilterItem(newItem);
@@ -232,17 +232,17 @@
             FilterItems.ResumeLayout();
         }
 
-        private void FilterItem_SelectedEnd(object sender, MenuButtonSelectionChangedEventArgs e)
+        private void FilterItem_SelectedEnd(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs e)
         {
             RemoveControlsAfter((Control)sender);
         }
 
-        private void FilterItem_SelectedMakeSubgroup(object sender, MenuButtonSelectionChangingEventArgs e)
+        private void FilterItem_SelectedMakeSubgroup(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e)
         {
             FilterItems.SuspendLayout();
 
             //' converts the filterItem to a filterItemGroup
-            FilterItemGroup newGroup = ConvertToSubgroup((FilterItem)sender);
+            KryptonOutlookGridFilterItemGroup newGroup = ConvertToSubgroup((KryptonOutlookGridFilterItem)sender);
             newGroup.FilterChanged = FilterChanged;
             //' resets all of the group titles
             SetGroupTitles();
@@ -261,31 +261,31 @@
             FilterChanged?.Invoke(sender, e);
         }
 
-        private void FilterMenu_SelectionChanged(object sender, MenuButtonSelectionChangedEventArgs e)
+        private void FilterMenu_SelectionChanged(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs e)
         {
             switch (e.NewSelectedIndex)
             {
-                case (int)FilterItemGroupMenuButton.Items.AndItem:
-                case (int)FilterItemMenuButton.Items.OrItem:
+                case (int)KryptonOutlookGridFilterItemGroupMenuButton.Items.AndItem:
+                case (int)KryptonOutlookGridFilterItemMenuButton.Items.OrItem:
                     GroupSelectedAndOr?.Invoke(this, e);
                     break;
 
-                case (int)FilterItemGroupMenuButton.Items.EndItem:
+                case (int)KryptonOutlookGridFilterItemGroupMenuButton.Items.EndItem:
                     GroupSelectedEnd?.Invoke(this, e);
                     break;
             }
         }
 
-        private void FilterMenu_SelectionChanging(object sender, MenuButtonSelectionChangingEventArgs e)
+        private void FilterMenu_SelectionChanging(object sender, KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e)
         {
             switch (e.NewSelectedIndex)
             {
-                case (int)FilterItemGroupMenuButton.Items.Delete:
+                case (int)KryptonOutlookGridFilterItemGroupMenuButton.Items.Delete:
                     e.Cancel = true;
                     GroupSelectedDelete?.Invoke(this, e);
                     break;
 
-                case (int)FilterItemGroupMenuButton.Items.Insert:
+                case (int)KryptonOutlookGridFilterItemGroupMenuButton.Items.Insert:
                     e.Cancel = true;
                     GroupSelectedInsert?.Invoke(this, e);
                     break;
@@ -296,19 +296,19 @@
 
         #region Public Methods
 
-        public List<FilterField> FillData()
+        public List<KryptonOutlookGridFilterField> FillData()
         {
-            List<FilterField> FilterData = [];
-            foreach (IFilterItem filterItem in FilterItems.Controls)
+            List<KryptonOutlookGridFilterField> FilterData = [];
+            foreach (IKryptonOutlookGridFilterItem filterItem in FilterItems.Controls)
             {
-                if (filterItem is FilterItemGroup group)
+                if (filterItem is KryptonOutlookGridFilterItemGroup group)
                 {
                     var data = group.FillData();
                     FilterData.AddRange(data);
                 }
                 else
                 {
-                    FilterField field = filterItem.FieldValue;
+                    KryptonOutlookGridFilterField field = filterItem.FieldValue;
                     if (field != null)
                     {
                         field.GroupInfo = this.Title.Replace("Group ", "").Replace("Main Group", "").Trim();
@@ -321,18 +321,18 @@
             return FilterData;
         }
 
-        public void SetGroupEndOperator(List<FilterField> fields)
+        public void SetGroupEndOperator(List<KryptonOutlookGridFilterField> fields)
         {
             //Set end of group menu button
-            foreach (IFilterItem filterItem in FilterItems.Controls)
+            foreach (IKryptonOutlookGridFilterItem filterItem in FilterItems.Controls)
             {
-                if (filterItem is FilterItemGroup group)
+                if (filterItem is KryptonOutlookGridFilterItemGroup group)
                 {
                     string grpText = group.Title.Replace("Group ", "");
                     var field = fields.Where(f => f.GroupInfo == grpText).FirstOrDefault();
                     if (field != null)
                     {
-                        group.FilterGroupMenu.Item = (FilterItemGroupMenuButton.Items)field.GroupConjunctionItem;
+                        group.FilterGroupMenu.Item = (KryptonOutlookGridFilterItemGroupMenuButton.Items)field.GroupConjunctionItem;
                         group.FilterGroupMenu.Text = group.FilterGroupMenu.Item.GetDescription();
                     }
                     group.SetGroupEndOperator(fields);
@@ -340,7 +340,7 @@
             }
         }
 
-        public bool AddFilterItem(FilterItem item)
+        public bool AddFilterItem(KryptonOutlookGridFilterItem item)
         {
             item.SelectedAndOr += FilterItem_SelectedAndOr;
             item.SelectedEnd += FilterItem_SelectedEnd;
@@ -358,12 +358,12 @@
             return true;
         }
 
-        public FilterItemGroup MakeSubGroup(FilterItem item)
+        public KryptonOutlookGridFilterItemGroup MakeSubGroup(KryptonOutlookGridFilterItem item)
         {
             FilterItems.SuspendLayout();
 
             //' converts the filterItem to a filterItemGroup
-            FilterItemGroup newGroup = ConvertToSubgroup(item, false);
+            KryptonOutlookGridFilterItemGroup newGroup = ConvertToSubgroup(item, false);
             newGroup.FilterChanged += FilterChanged;
             //' resets all of the group titles
             SetGroupTitles();
@@ -376,10 +376,10 @@
             return newGroup;
         }
 
-        public FilterItemGroup ConvertToSubgroup(FilterItem item, bool changeSelectedMenuItem = true)
+        public KryptonOutlookGridFilterItemGroup ConvertToSubgroup(KryptonOutlookGridFilterItem item, bool changeSelectedMenuItem = true)
         {
             //FilterItemGroup newGroup = new(this.Columns); //' A new group of the controls currently in the group
-            FilterItemGroup newGroup = new(Columns); //' A new group of the controls currently in the group
+            KryptonOutlookGridFilterItemGroup newGroup = new(Columns); //' A new group of the controls currently in the group
             int itemIndex = FilterItems.Controls.IndexOf(item); //' Where to add the new group
 
             SuspendLayout();
@@ -397,7 +397,7 @@
                 //' Sets the menu selection for the new group to whatever the item had selected
                 newGroup.SelectedMenuItem = item.SelectedMenuItem;
                 //' Sets the menu button of the item
-                item.SelectedMenuItem = FilterItemMenuButton.Items.EndItem;
+                item.SelectedMenuItem = KryptonOutlookGridFilterItemMenuButton.Items.EndItem;
             }
 
             //' Add the item to the new group
@@ -426,7 +426,7 @@
             string currentFilter;
             string lastConjunction = "";
 
-            foreach (IFilterItem item in FilterItems.Controls)
+            foreach (IKryptonOutlookGridFilterItem item in FilterItems.Controls)
             {
                 currentFilter = item.ReadableFilter;
                 if (currentFilter.Length > 0)
@@ -451,7 +451,7 @@
             FilterItems.SuspendLayout();
             FilterItems.Controls.Clear();
 
-            AddFilterItem(new FilterItem(_columns));
+            AddFilterItem(new KryptonOutlookGridFilterItem(_columns));
 
             FilterItems.ResumeLayout();
         }
@@ -478,14 +478,14 @@
 
         private void SetGroupTitles()
         {
-            FilterItemGroup group;
+            KryptonOutlookGridFilterItemGroup group;
             int count = 1;
 
             foreach (object item in FilterItems.Controls)
             {
-                if (item.GetType().Equals(typeof(FilterItemGroup)))
+                if (item.GetType().Equals(typeof(KryptonOutlookGridFilterItemGroup)))
                 {
-                    group = (FilterItemGroup)item;
+                    group = (KryptonOutlookGridFilterItemGroup)item;
 
                     //' The primary group will use different naming conventions
                     if (!PrimaryGroup)

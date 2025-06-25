@@ -1,6 +1,6 @@
 ﻿namespace Krypton.Toolkit
 {
-    partial class FilterItemGroup
+    partial class KryptonOutlookGridFilterItemGroup
     {
         /// <summary> 
         /// Required designer variable.
@@ -34,7 +34,7 @@
             this.GroupFilter = new System.Windows.Forms.Label();
             this.FilterItems = new System.Windows.Forms.FlowLayoutPanel();
             this.FlowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
-            this.FilterGroupMenu = new FilterItemGroupMenuButton();
+            this.FilterGroupMenu = new KryptonOutlookGridFilterItemGroupMenuButton();
             this.GroupBox1.SuspendLayout();
             this.MainLayoutPanel.SuspendLayout();
             this.FlowLayoutPanel1.SuspendLayout();
@@ -147,7 +147,7 @@
 
         internal System.Windows.Forms.FlowLayoutPanel FlowLayoutPanel1;
 
-        internal FilterItemGroupMenuButton FilterGroupMenu;
+        internal KryptonOutlookGridFilterItemGroupMenuButton FilterGroupMenu;
 
 
         #endregion

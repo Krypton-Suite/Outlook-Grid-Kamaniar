@@ -4,7 +4,7 @@
 /// Provides a collection of static extension methods that add functionality to existing types.
 /// These methods enhance readability and simplify common operations across different parts of the application.
 /// </summary>
-public static class HelperExtensions
+internal static class HelperExtensions
 {
 
 #if NETFRAMEWORK
@@ -27,30 +27,6 @@ public static class HelperExtensions
     /// <returns><c>true</c> if the object can be parsed as a double; otherwise, <c>false</c>.</returns>
     public static bool IsNumeric(this object value) =>
         value is not null && double.TryParse(value.ToString(), out _);
-
-    /// <summary>
-    /// Determines whether the specified string represents a valid date based on the current system's culture settings.
-    /// </summary>
-    /// <param name="value">The string to check.</param>
-    /// <returns>True if the string can be parsed as a date, false otherwise.</returns>
-    public static bool IsDate(this string value)
-    {
-        // 1. Handle null or empty strings upfront.
-        // DateTime.TryParse also handles this, but it's good for clarity.
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        // Use DateTime.TryParse for robust validation based on the current system's culture.
-        // It tries to parse the string and returns true if successful, false otherwise.
-        // The 'out _' discards the parsed DateTime result as we only need the boolean.
-        return DateTime.TryParse(
-            value,   // The string to parse
-            out _    // Discard the parsed DateTime result
-        );
-    }
-
 
     /// <summary>
     /// Converts an object to a string. If the object is null, returns an empty string.
@@ -138,6 +114,39 @@ public static class HelperExtensions
     }
 
     /// <summary>
+    /// Provides culture-invariant settings for date parsing.
+    /// </summary>
+    private static readonly CultureInfo provider = CultureInfo.InvariantCulture;
+
+    /// <summary>
+    /// An array of common date and date-time formats used for parsing.
+    /// </summary>
+    private static readonly string[] formats = [.. new string[] {
+        // Date only formats
+        "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy", "dd/MMM/yyyy", "dd-MMM-yyyy", "dd.MMM/yyyy",
+        "MM/dd/yyyy", "MM-dd-yyyy", "MM.dd.yyyy", "M/d/yyyy", "M-d-yyyy", "M.d.yyyy",
+
+        // Date and Time formats (24-hour)
+        "dd/MM/yyyy HH:mm:ss", "dd-MM-yyyy HH:mm:ss", "dd.MM.yyyy HH:mm:ss",
+        "MM/dd/yyyy HH:mm:ss", "MM-dd-yyyy HH:mm:ss",
+
+        // Date and Time formats (12-hour with AM/PM)
+        "dd/MM/yyyy h:mm:ss tt", "dd-MM-yyyy h:mm:ss tt", "dd.MM.yyyy h:mm:ss tt",
+        "MM/dd/yyyy h:mm:ss tt", "MM-dd-yyyy h:mm:ss tt",
+
+        // Short time formats
+        "dd/MM/yyyy H:mm", "dd/MM/yyyy h:mm tt",
+
+        // Add more specific formats if needed, e.g., without seconds
+        "dd/MM/yyyy HH:mm", "dd-MM-yyyy HH:mm", "dd.MM.yyyy HH:mm",
+        "MM/dd/yyyy HH:mm", "MM-dd-yyyy HH:mm",
+
+        "dd/MM/yyyy h:mm tt", "dd-MM-yyyy h:mm tt", "dd.MM.yyyy h:mm tt",
+        "MM/dd/yyyy h:mm tt", "MM-dd-yyyy h:mm tt"
+
+    }.Union(provider.DateTimeFormat.GetAllDateTimePatterns()).OrderByDescending(f => f.Length).ToArray()]; // Order by length for better matching
+
+    /// <summary>
     /// Converts an object to a DateTime. If conversion fails, returns DateTime.MinValue.
     /// </summary>
     /// <param name="obj">The object to convert.</param>
@@ -145,11 +154,54 @@ public static class HelperExtensions
     public static DateTime ToDateTime(this object? obj)
     {
         if (obj == null) return DateTime.MinValue;
-        if (DateTime.TryParse(obj.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime result))
+
+        string? dateString = obj.ToString();
+        if (string.IsNullOrWhiteSpace(dateString)) return DateTime.MinValue;
+
+        // Try parsing with exact formats first
+        if (DateTime.TryParseExact(dateString, formats, provider, DateTimeStyles.None, out DateTime resultExact))
         {
-            return result;
+            return resultExact;
         }
+
+        // If TryParseExact fails, try general TryParse
+        // This is useful for formats that might be less strict or dynamically generated,
+        // but it's generally less robust than TryParseExact for known formats.
+        if (DateTime.TryParse(dateString, provider, DateTimeStyles.None, out DateTime resultGeneral))
+        {
+            return resultGeneral;
+        }
+
         return DateTime.MinValue;
+    }
+
+    /// <summary>
+    /// Determines whether the specified string represents a valid date based on the current system's culture settings.
+    /// </summary>
+    /// <param name="obj">The string to check.</param>
+    /// <returns>True if the string can be parsed as a date, false otherwise.</returns>
+    public static bool IsDate(this object? obj)
+    {
+        if (obj == null) return false;
+
+        string? dateString = obj.ToString();
+        if (string.IsNullOrWhiteSpace(dateString)) return false;
+
+        // Try parsing with exact formats first
+        if (DateTime.TryParseExact(dateString, formats, provider, DateTimeStyles.None, out DateTime resultExact))
+        {
+            return true;
+        }
+
+        // If TryParseExact fails, try general TryParse
+        // This is useful for formats that might be less strict or dynamically generated,
+        // but it's generally less robust than TryParseExact for known formats.
+        if (DateTime.TryParse(dateString, provider, DateTimeStyles.None, out DateTime resultGeneral))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -353,7 +405,7 @@ public static class HelperExtensions
     /// <returns>A string representing the filter condition.</returns>
     public static string GetFilterString(string tableName, string columnName, string columnDataType, string filterOperator, string value1, string value2, bool formatValue, bool readable)
     {
-        FilterOperators Operator = filterOperator.ToEnum<FilterOperators>();
+        KryptonOutlookGridFilterOperators Operator = filterOperator.ToEnum<KryptonOutlookGridFilterOperators>();
 
         string op = Operator.GetDescription();
         if (readable)
@@ -364,28 +416,28 @@ public static class HelperExtensions
 
         switch (Operator)
         {
-            case FilterOperators.BeginsWith:
-            case FilterOperators.NotBeginsWith:
+            case KryptonOutlookGridFilterOperators.BeginsWith:
+            case KryptonOutlookGridFilterOperators.NotBeginsWith:
                 formattedValue1 = $"{formattedValue1}";
                 break;
-            case FilterOperators.Contains:
-            case FilterOperators.NotContains:
+            case KryptonOutlookGridFilterOperators.Contains:
+            case KryptonOutlookGridFilterOperators.NotContains:
                 formattedValue1 = $"{formattedValue1}";
                 break;
-            case FilterOperators.EndsWith:
-            case FilterOperators.NotEndsWith:
+            case KryptonOutlookGridFilterOperators.EndsWith:
+            case KryptonOutlookGridFilterOperators.NotEndsWith:
                 formattedValue1 = $"{formattedValue1}";
                 break;
-            case FilterOperators.IsEmpty:
-            case FilterOperators.IsNotEmpty:
+            case KryptonOutlookGridFilterOperators.IsEmpty:
+            case KryptonOutlookGridFilterOperators.IsNotEmpty:
                 formattedValue1 = string.Empty;
                 break;
-            case FilterOperators.IsNull:
-            case FilterOperators.IsNotNull:
+            case KryptonOutlookGridFilterOperators.IsNull:
+            case KryptonOutlookGridFilterOperators.IsNotNull:
                 formattedValue1 = "null";
                 break;
-            case FilterOperators.In:
-            case FilterOperators.NotIn:
+            case KryptonOutlookGridFilterOperators.In:
+            case KryptonOutlookGridFilterOperators.NotIn:
                 formattedValue1 = $"( {formattedValue1} )";
                 break;
             default:
@@ -401,7 +453,7 @@ public static class HelperExtensions
 
         string column = string.IsNullOrEmpty(tableName) ? columnName : $"{tableName}.{columnName}";
 
-        if (Operator == FilterOperators.Between || Operator == FilterOperators.NotBetween)
+        if (Operator == KryptonOutlookGridFilterOperators.Between || Operator == KryptonOutlookGridFilterOperators.NotBetween)
         {
             if (string.IsNullOrEmpty(value2.ToStringNull().Trim()))
             {
@@ -409,12 +461,20 @@ public static class HelperExtensions
             }
             return $"{column} {op} {formattedValue1} AND {formattedValue2}";
         }
-        else if (Operator == FilterOperators.IsNull || Operator == FilterOperators.IsNotNull)
+        else if (Operator == KryptonOutlookGridFilterOperators.IsNull || Operator == KryptonOutlookGridFilterOperators.IsNotNull)
         {
             return $"{column} {op}";
         }
         else
         {
+            /*if (Operator == FilterOperators.Equals && columnDataType.Equals(typeof(Image).Name, StringComparison.OrdinalIgnoreCase) && formattedValue2 == "NOT NULL")
+            {
+                return $"{column} {FilterOperators.IsNotNull.GetDescription()}";
+            }
+            else if (Operator == FilterOperators.Equals && columnDataType.Equals(typeof(Image).Name, StringComparison.OrdinalIgnoreCase) && formattedValue2 == "NULL")
+            {
+                return $"{column} {FilterOperators.IsNull.GetDescription()}";
+            }*/
             return $"{column} {op} {formattedValue1}";
         }
     }

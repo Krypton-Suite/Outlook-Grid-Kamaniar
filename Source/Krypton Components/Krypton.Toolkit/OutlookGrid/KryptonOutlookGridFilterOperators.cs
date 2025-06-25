@@ -4,7 +4,7 @@
     /// <summary>
     /// Enumerates the different operators that can be used to filter data in a query.
     /// </summary>
-    public enum FilterOperators
+    public enum KryptonOutlookGridFilterOperators
     {
         /// <summary>
         /// Equal to a specified value.
@@ -106,7 +106,7 @@
         /// </summary>
         [Description("IS NOT NULL")]
         IsNotNull,
-        /// <summary>
+        /*/// <summary>
         /// Value is true.
         /// </summary>
         [Description("TRUE")]
@@ -115,7 +115,7 @@
         /// Value is true.
         /// </summary>
         [Description("FALSE")]
-        False
+        False*/
     }
 
     /*/// <summary>

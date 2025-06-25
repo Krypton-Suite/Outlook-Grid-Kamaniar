@@ -258,6 +258,7 @@ namespace Krypton.Toolkit
 
                 for (int i = 0; i < SummaryRow.Cells.Count; i++)
                 {
+                    if (!grid.Columns[i].Visible) continue;
                     var value = SummaryRow.Cells[i].Value == null ? string.Empty : SummaryRow.Cells[i].Value!.ToString();
                     // Only add to summary if the value is not null/empty
                     if (!string.IsNullOrEmpty(value))
@@ -290,47 +291,6 @@ namespace Krypton.Toolkit
                 return sb.ToString().TrimEnd();
             }
         }
-
-        /*public virtual string SummaryText
-        {
-            get
-            {
-                string formattedValue = "";
-                if (SummaryRow == null)
-                {
-                    return string.Empty;
-                }
-                var grid = (KryptonOutlookGrid)this.Column.DataGridViewColumn.DataGridView!;
-
-                for (int i = 0; i < SummaryRow.Cells.Count; i++)
-                {
-                    if (!string.IsNullOrEmpty(SummaryRow.Cells[i].Value.ToStringNull()))
-                    {
-                        var col = grid.FindFromColumnIndex(i)!;
-                        string cellValueFormat = grid.Columns[i].DefaultCellStyle.Format;
-                        string formattedAggregatedValueForCell = SummaryRow.Cells[i].Value.ToStringNull();
-                        if (!string.IsNullOrEmpty(cellValueFormat))
-                        {
-                            try
-                            {
-                                formattedAggregatedValueForCell = string.Format("{0:" + cellValueFormat + "}", SummaryRow.Cells[i].Value);
-                            }
-                            catch (FormatException)
-                            {
-                                formattedAggregatedValueForCell = SummaryRow.Cells[i].Value.ToStringNull()!;
-                            }
-                        }
-                        else
-                        {
-                            formattedAggregatedValueForCell = SummaryRow.Cells[i].Value.ToStringNull()!;
-                        }
-                        formattedValue += $" {col.AggregationType} of {col.DataGridViewColumn.HeaderText}: {formattedAggregatedValueForCell}";
-                    }
-                }
-
-                return formattedValue;
-            }
-        }*/
 
         /// <summary>
         /// Gets or sets the Value of the group

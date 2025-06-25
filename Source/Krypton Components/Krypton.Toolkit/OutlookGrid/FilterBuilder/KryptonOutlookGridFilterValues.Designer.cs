@@ -1,6 +1,6 @@
 ﻿namespace Krypton.Toolkit
 {
-    partial class FilterValues
+    partial class KryptonOutlookGridFilterValues
     {
         /// <summary> 
         /// Required designer variable.

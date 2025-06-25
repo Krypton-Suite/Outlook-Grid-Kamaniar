@@ -3,7 +3,7 @@
     /// <summary>
     /// Specifies the type of aggregation to perform on a column in group rows.
     /// </summary>
-    public enum AggregationType
+    public enum KryptonOutlookGridAggregationType
     {
         /// <summary>
         /// No aggregation will be performed.

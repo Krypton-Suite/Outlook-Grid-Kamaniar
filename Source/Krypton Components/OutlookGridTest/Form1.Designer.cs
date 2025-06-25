@@ -54,6 +54,7 @@
             this.BtnSelectionMode = new Krypton.Toolkit.KryptonButton();
             this.kryptonExtraGrid1 = new Krypton.Toolkit.KryptonExtraGrid();
             this.kryptonTableLayoutPanel1 = new Krypton.Toolkit.KryptonTableLayoutPanel();
+            this._textBox = new Krypton.Toolkit.KryptonTextBox();
             ((System.ComponentModel.ISupportInitialize)(this.outlookGrid1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.kryptonExtraGrid1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.kryptonExtraGrid1.OutlookGrid)).BeginInit();
@@ -108,6 +109,7 @@
             this.outlookGrid1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.outlookGrid1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.outlookGrid1.EnableSearchOnKeyPress = true;
+            this.outlookGrid1.FillMode = Krypton.Toolkit.GridFillMode.GroupsOnly;
             this.outlookGrid1.Location = new System.Drawing.Point(3, 3);
             this.outlookGrid1.Name = "outlookGrid1";
             this.outlookGrid1.ReadOnly = true;
@@ -116,7 +118,7 @@
             this.outlookGrid1.ShowGrandTotal = true;
             this.outlookGrid1.ShowLines = false;
             this.outlookGrid1.ShowSubTotal = true;
-            this.outlookGrid1.Size = new System.Drawing.Size(1054, 270);
+            this.outlookGrid1.Size = new System.Drawing.Size(999, 270);
             this.outlookGrid1.TabIndex = 0;
             // 
             // kryptonContextMenu1
@@ -216,7 +218,7 @@
             this.kryptonExtraGrid1.GroupBox.Dock = System.Windows.Forms.DockStyle.Top;
             this.kryptonExtraGrid1.GroupBox.Location = new System.Drawing.Point(0, 0);
             this.kryptonExtraGrid1.GroupBox.Name = "KryptonOutlookGridGroupBox";
-            this.kryptonExtraGrid1.GroupBox.Size = new System.Drawing.Size(1052, 46);
+            this.kryptonExtraGrid1.GroupBox.Size = new System.Drawing.Size(1068, 46);
             this.kryptonExtraGrid1.GroupBox.TabIndex = 1;
             this.kryptonExtraGrid1.HeaderVisibleSecondary = false;
             this.kryptonExtraGrid1.Location = new System.Drawing.Point(3, 279);
@@ -229,7 +231,7 @@
             this.kryptonExtraGrid1.OutlookGrid.Location = new System.Drawing.Point(0, 73);
             this.kryptonExtraGrid1.OutlookGrid.Name = "";
             this.kryptonExtraGrid1.OutlookGrid.ShowLines = false;
-            this.kryptonExtraGrid1.OutlookGrid.Size = new System.Drawing.Size(1052, 165);
+            this.kryptonExtraGrid1.OutlookGrid.Size = new System.Drawing.Size(1068, 140);
             this.kryptonExtraGrid1.OutlookGrid.TabIndex = 0;
             // 
             // 
@@ -238,9 +240,10 @@
             this.kryptonExtraGrid1.SearchToolBar.Location = new System.Drawing.Point(0, 46);
             this.kryptonExtraGrid1.SearchToolBar.MinimumSize = new System.Drawing.Size(0, 0);
             this.kryptonExtraGrid1.SearchToolBar.Name = "";
-            this.kryptonExtraGrid1.SearchToolBar.Size = new System.Drawing.Size(1052, 27);
+            this.kryptonExtraGrid1.SearchToolBar.Size = new System.Drawing.Size(1068, 27);
             this.kryptonExtraGrid1.SearchToolBar.TabIndex = 1;
-            this.kryptonExtraGrid1.Size = new System.Drawing.Size(1054, 270);
+            this.kryptonExtraGrid1.ShowGrandTotalAtBottom = true;
+            this.kryptonExtraGrid1.Size = new System.Drawing.Size(999, 270);
             this.kryptonExtraGrid1.TabIndex = 12;
             this.kryptonExtraGrid1.ValuesPrimary.Image = null;
             this.kryptonExtraGrid1.ValuesSecondary.Heading = "";
@@ -259,14 +262,22 @@
             this.kryptonTableLayoutPanel1.RowCount = 2;
             this.kryptonTableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.kryptonTableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.kryptonTableLayoutPanel1.Size = new System.Drawing.Size(1060, 552);
+            this.kryptonTableLayoutPanel1.Size = new System.Drawing.Size(1005, 552);
             this.kryptonTableLayoutPanel1.TabIndex = 13;
+            // 
+            // _textBox
+            // 
+            this._textBox.Location = new System.Drawing.Point(553, 46);
+            this._textBox.Name = "_textBox";
+            this._textBox.Size = new System.Drawing.Size(100, 23);
+            this._textBox.TabIndex = 14;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1084, 638);
+            this.ClientSize = new System.Drawing.Size(1029, 638);
+            this.Controls.Add(this._textBox);
             this.Controls.Add(this.kryptonTableLayoutPanel1);
             this.Controls.Add(this.BtnSelectionMode);
             this.Controls.Add(this.BtnLoadDictionary);
@@ -289,6 +300,7 @@
             this.kryptonExtraGrid1.ResumeLayout(false);
             this.kryptonTableLayoutPanel1.ResumeLayout(false);
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -320,5 +332,6 @@
         private Krypton.Toolkit.KryptonButton BtnSelectionMode;
         private Krypton.Toolkit.KryptonExtraGrid kryptonExtraGrid1;
         private Krypton.Toolkit.KryptonTableLayoutPanel kryptonTableLayoutPanel1;
+        private Krypton.Toolkit.KryptonTextBox _textBox;
     }
 }

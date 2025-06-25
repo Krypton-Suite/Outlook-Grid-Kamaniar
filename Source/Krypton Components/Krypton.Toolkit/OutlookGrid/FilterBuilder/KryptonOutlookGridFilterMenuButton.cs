@@ -2,14 +2,14 @@
 
 #region Menu Button
 
-internal class MenuButton : KryptonDropButton
+internal class KryptonOutlookGridFilterMenuButton : KryptonDropButton
 {
 
     #region Public Delegates And Events
 
-    public event SelectionChangedEventHandler? SelectionChanged;
+    public event KryptonOutlookGridFilterSelectionChangedEventHandler? SelectionChanged;
 
-    public event SelectionChangingEventHandler? SelectionChanging;
+    public event KryptonOutlookGridFilterSelectionChangingEventHandler? SelectionChanging;
 
     #endregion Public Delegates And Events
 
@@ -37,7 +37,7 @@ internal class MenuButton : KryptonDropButton
             int oldIndex = SelectedIndex;
 
             //' Raises an event that allows a user to cancel the selection changing event
-            MenuButtonSelectionChangingEventArgs e = new(value, oldIndex);
+            KryptonOutlookGridFilterMenuButtonSelectionChangingEventArgs e = new(value, oldIndex);
             SelectionChanging?.Invoke(this, e);
 
             //' Checks if a handler of the SelectionChanging event cancel the selection
@@ -75,7 +75,7 @@ internal class MenuButton : KryptonDropButton
                     //' Raises the selectionChanged event if it actually did change
                     if (selectionChanged)
                     {
-                        SelectionChanged?.Invoke(this, new MenuButtonSelectionChangedEventArgs(value, oldIndex));
+                        SelectionChanged?.Invoke(this, new KryptonOutlookGridFilterMenuButtonSelectionChangedEventArgs(value, oldIndex));
                     }
                 }
                 catch (Exception)
@@ -89,7 +89,7 @@ internal class MenuButton : KryptonDropButton
 
     #region Constructor
 
-    public MenuButton()
+    public KryptonOutlookGridFilterMenuButton()
     {
         this.Splitter = false;
         this.ContextMenuStrip = Menu;
@@ -114,7 +114,7 @@ internal class MenuButton : KryptonDropButton
 
 #region Filter ItemMenu Button
 
-internal class FilterItemMenuButton : MenuButton
+internal class KryptonOutlookGridFilterItemMenuButton : KryptonOutlookGridFilterMenuButton
 {
 
     #region Enums
@@ -157,7 +157,7 @@ internal class FilterItemMenuButton : MenuButton
 
     #region Construtors
 
-    public FilterItemMenuButton()
+    public KryptonOutlookGridFilterItemMenuButton()
     {
         AddMenuItem();
         this.ContextMenuStrip = Menu;
@@ -220,7 +220,7 @@ internal class FilterItemMenuButton : MenuButton
 
 #region Filter Item Group Menu Button
 
-internal class FilterItemGroupMenuButton : MenuButton
+internal class KryptonOutlookGridFilterItemGroupMenuButton : KryptonOutlookGridFilterMenuButton
 {
 
     #region Enums
@@ -261,7 +261,7 @@ internal class FilterItemGroupMenuButton : MenuButton
 
     #region Construtors
 
-    public FilterItemGroupMenuButton()
+    public KryptonOutlookGridFilterItemGroupMenuButton()
     {
         AddMenuItem();
         Item = Items.EndItem;

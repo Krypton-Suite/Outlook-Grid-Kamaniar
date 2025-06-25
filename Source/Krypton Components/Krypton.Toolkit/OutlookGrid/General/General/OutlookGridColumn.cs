@@ -116,7 +116,7 @@ namespace Krypton.Toolkit
         /// <param name="sortIndex">the column's position among sorted columns.</param>
         /// <param name="comparer">The comparer if needed.</param>
         /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
-        public OutlookGridColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, AggregationType aggregationType = AggregationType.None)
+        public OutlookGridColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, KryptonOutlookGridAggregationType aggregationType = KryptonOutlookGridAggregationType.None)
         {
             DataGridViewColumn = col;
             Name = col?.Name;
@@ -139,7 +139,7 @@ namespace Krypton.Toolkit
         /// <param name="sortIndex">the column's position among sorted columns.</param>
         /// <param name="comparer">The comparer if needed</param>
         /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
-        public OutlookGridColumn(string? columnName, DataGridViewColumn? col, IOutlookGridGroup? group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, AggregationType aggregationType = AggregationType.None)
+        public OutlookGridColumn(string? columnName, DataGridViewColumn? col, IOutlookGridGroup? group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, KryptonOutlookGridAggregationType aggregationType = KryptonOutlookGridAggregationType.None)
         {
             DataGridViewColumn = col!;
             Name = columnName;
@@ -161,7 +161,7 @@ namespace Krypton.Toolkit
         /// <param name="groupIndex">The column's position in grouping and at which level.</param>
         /// <param name="sortIndex">the column's position among sorted columns.</param>
         /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
-        public OutlookGridColumn(string columnName, DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, AggregationType aggregationType = AggregationType.None)
+        public OutlookGridColumn(string columnName, DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, KryptonOutlookGridAggregationType aggregationType = KryptonOutlookGridAggregationType.None)
         {
             DataGridViewColumn = col;
             Name = columnName;
@@ -179,7 +179,7 @@ namespace Krypton.Toolkit
         /// <param name="groupIndex">Index of the group.</param>
         /// <param name="sortIndex">Index of the sort.</param>
         /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
-        public OutlookGridColumn(DataGridViewColumn col, IOutlookGridGroup? group, SortOrder sortOrder, int groupIndex, int sortIndex, AggregationType aggregationType = AggregationType.None)
+        public OutlookGridColumn(DataGridViewColumn col, IOutlookGridGroup? group, SortOrder sortOrder, int groupIndex, int sortIndex, KryptonOutlookGridAggregationType aggregationType = KryptonOutlookGridAggregationType.None)
         {
             DataGridViewColumn = col;
             Name = col?.Name;
@@ -235,14 +235,14 @@ namespace Krypton.Toolkit
         /// <summary>
         /// Gets or sets the type of aggregation to perform on this column.
         /// </summary>
-        public AggregationType AggregationType { get; set; }
+        public KryptonOutlookGridAggregationType AggregationType { get; set; }
 
         /// <summary>
         /// Gets or sets the format string for displaying the aggregated value in summary rows.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This property defines the overall text format for a cell in a summary row (group footer or grand total row).
+        /// This property defines the overall text format for a cell in a summary row (group footer or grand total).
         /// It uses standard <see cref="string.Format(string, object[])"/> indexed placeholders to embed relevant information.
         /// </para>
         /// <para>
@@ -254,7 +254,7 @@ namespace Krypton.Toolkit
         ///     </listheader>
         ///     <item>
         ///         <term>{0}</term>
-        ///         <description>The group's identifying text (e.g., the value of the grouped column for a subtotal row, or "Grand Total" for a grand total row).</description>
+        ///         <description>The group's identifying text (e.g., the value of the group).</description>
         ///     </item>
         ///     <item>
         ///         <term>{1}</term>
@@ -283,7 +283,7 @@ namespace Krypton.Toolkit
         ///     </item>
         ///     <item>
         ///         <term><c>"{2}"</c></term>
-        ///         <description>Displays only the formatted aggregated value. Useful for <see cref="AggregationType.MinMax"/> where the value itself might already be a descriptive string like "2024-01-01 - 2024-12-31".</description>
+        ///         <description>Displays only the formatted aggregated value. Useful for <see cref="KryptonOutlookGridAggregationType.MinMax"/> where the value itself might already be a descriptive string like "2024-01-01 - 2024-12-31".</description>
         ///     </item>
         /// </list>
         /// </para>
@@ -344,9 +344,9 @@ namespace Krypton.Toolkit
         public string? AggregationFormatString { get; set; }*/
 
         /// <summary>
-        /// Gets the list of <see cref="FilterField"/> objects representing the current filter configuration.
+        /// Gets the list of <see cref="KryptonOutlookGridFilterField"/> objects representing the current filter configuration.
         /// </summary>
-        public List<FilterField>? Filters { get; set; }
+        public List<KryptonOutlookGridFilterField>? Filters { get; set; }
 
         /// <summary>
         /// Gets or sets the type of aggregation to perform on this column.

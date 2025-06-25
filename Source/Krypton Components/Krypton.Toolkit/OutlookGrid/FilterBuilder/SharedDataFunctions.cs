@@ -6,7 +6,7 @@ namespace Krypton.Toolkit;
 /// Provides shared utility functions for data manipulation, particularly for extracting data
 /// from UI controls and performing common data operations like finding distinct values.
 /// </summary>
-public static class SharedDataFunctions
+internal static class SharedDataFunctions
 {
 
     #region Public Functions
@@ -36,65 +36,64 @@ public static class SharedDataFunctions
     /// otherwise, <c>null</c>.</returns>
     public static DataTable? GetSourceTable(object? dataSource, string dataMember)
     {
-        DataTable? table = null;
-        if (dataSource == null) return table;
-        //' Extracts the underlying datatable from either the dataview, dataset, or datatable
-        //' that the gridview is bound to.
-        try
+        if (dataSource == null)
         {
-            table = ((DataView)dataSource).Table;
+            return null;
         }
-        catch
-        {
-            try
-            {
-                table = (DataTable)dataSource;
-            }
-            catch
-            {
-                try
-                {
-                    table = ((DataSet)dataSource).Tables[dataMember];
-                }
-                catch
-                {
-                    try
-                    {
-                        BindingSource? bs = (BindingSource)dataSource;
 
-                        //' First try to cast the datasource to a dataset
-                        try
-                        {
-                            table = ((DataSet)bs.DataSource!).Tables[bs.DataMember];
-                        }
-                        catch (Exception)
-                        {
-                            //' Try to cast the datasource to a datatable
-                            try
-                            {
-                                table = (DataTable)bs.DataSource!;
-                            }
-                            catch (Exception)
-                            {
-                                //' Try to cast the datasource to a dataview
-                                try
-                                {
-                                    table = ((DataView)bs.DataSource!).Table;
-                                }
-                                catch (Exception)
-                                {
-                                }
-                            }
-                        }
-                    }
-                    catch
-                    {
-                    }
+        // Prioritize BindingSource first, as it's a common wrapper
+        if (dataSource is BindingSource bindingSource)
+        {
+            // If BindingSource is bound to a DataSet, use its DataMember
+            if (bindingSource.DataSource is DataSet dataSet && !string.IsNullOrEmpty(bindingSource.DataMember))
+            {
+                if (dataSet.Tables.Contains(bindingSource.DataMember))
+                {
+                    return dataSet.Tables[bindingSource.DataMember];
+                }
+            }
+            // If BindingSource is directly bound to a DataTable
+            else if (bindingSource.DataSource is DataTable dataTable)
+            {
+                return dataTable;
+            }
+            // If BindingSource is bound to a DataView
+            else if (bindingSource.DataSource is DataView dataView)
+            {
+                return dataView.Table;
+            }
+            // Add more specific types if needed (e.g., List<T>)
+            else if (bindingSource.DataSource != null)
+            {
+                // For other enumerable types, if they wrap a DataTable implicitly,
+                // you might need more complex logic. For now, we'll focus on direct DataTable/DataSet.
+                // Or if the BindingSource items are DataRowViews:
+                if (bindingSource.Current is DataRowView drv)
+                {
+                    return drv.DataView.Table;
                 }
             }
         }
+        // Handle direct DataTable binding
+        else if (dataSource is DataTable directTable)
+        {
+            return directTable;
+        }
+        // Handle direct DataSet binding (less common for a single grid, but possible)
+        else if (dataSource is DataSet directDataSet && !string.IsNullOrEmpty(dataMember))
+        {
+            if (directDataSet.Tables.Contains(dataMember))
+            {
+                return directDataSet.Tables[dataMember];
+            }
+        }
+        // Handle direct DataView binding
+        else if (dataSource is DataView directDataView)
+        {
+            return directDataView.Table;
+        }
 
-        return table;
+        return null; // Could not determine the DataTable
     }
 
     /// <summary>

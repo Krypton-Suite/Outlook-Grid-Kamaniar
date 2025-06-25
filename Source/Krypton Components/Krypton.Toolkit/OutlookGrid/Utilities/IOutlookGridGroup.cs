@@ -40,8 +40,6 @@
         /// </summary>
         int Height { get; set; }
 
-        //New additions
-
         /// <summary>
         /// specifies which column is associated with this group
         /// </summary>
@@ -107,6 +105,9 @@
         /// </summary>
         string SummaryText { get; }
 
+        /// <summary>
+        /// Gets or sets the summary row for group
+        /// </summary>
         OutlookGridRow? SummaryRow { get; set; }
     }
 }

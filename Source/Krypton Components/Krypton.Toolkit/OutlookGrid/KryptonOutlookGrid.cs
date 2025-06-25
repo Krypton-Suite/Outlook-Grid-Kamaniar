@@ -52,7 +52,7 @@ namespace Krypton.Toolkit
 
         private OutlookGridGroupCollection _groupCollection;     // List of Groups (of rows)
         private List<OutlookGridRow> _internalRows;              // List of Rows in order to keep them as is (without grouping,...)
-        private List<OutlookGridRow> _originalRows = default!;   // List of Rows in order to keep them as is (without grouping, filter,...)
+        private HashSet<OutlookGridRow> _originalRows = default!;   // List of Rows in order to keep them as is (without grouping, filter,...)
         private readonly OutlookGridColumnCollection _internalColumns;    // List of columns in order to know if sorted, Grouped, types,...
         private int _previousGroupRowSelected = -1; //Useful to allow the selection of a group row or not when on mouse down 
 
@@ -340,7 +340,8 @@ namespace Krypton.Toolkit
         /// <value>
         /// The fill mode.
         /// </value>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        [DefaultValue(GridFillMode.GroupsAndNodes)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public GridFillMode FillMode
         {
             get => _fillMode;
@@ -760,6 +761,10 @@ namespace Krypton.Toolkit
                 }
             }
             base.OnCellPainting(e);
+            if (_highlightSearchText || _enableSearchOnKeyPress || this.ReadOnly)
+            {
+                PaintSearchText(e, SearchText);
+            }
         }
 
         /// <summary>
@@ -785,7 +790,7 @@ namespace Krypton.Toolkit
             }
             OutlookGridRow row = (OutlookGridRow)Rows[e.RowIndex];
             //DebugUtilities.WriteLine("OnCellMouseDown " + DateTime.Now.Ticks.ToString() + "IsIconHit" + row.IsIconHit(e).ToString());
-            if (_previousGroupRowSelected != -1 && _previousGroupRowSelected != e.RowIndex)
+            if (_previousGroupRowSelected != -1 && _previousGroupRowSelected != e.RowIndex && PreviousSelectedGroupRow < Rows.Count)
             {
                 InvalidateRow(PreviousSelectedGroupRow);
             }
@@ -1556,7 +1561,7 @@ namespace Krypton.Toolkit
         /// <param name="sortIndex">the column's position among sorted columns.</param>
         /// <param name="comparer">The comparer if needed</param>
         /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
-        public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, AggregationType aggregationType) =>
+        public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, IComparer? comparer, KryptonOutlookGridAggregationType aggregationType) =>
             AddInternalColumn(new OutlookGridColumn(col, group, sortDirection, groupIndex, sortIndex, comparer, aggregationType));
 
         /// <summary>
@@ -1579,7 +1584,7 @@ namespace Krypton.Toolkit
         /// <param name="groupIndex">The column's position in grouping and at which level.</param>
         /// <param name="sortIndex">the column's position among sorted columns.</param>
         /// <param name="aggregationType">The type of aggregation to apply to the column.</param>
-        public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, AggregationType aggregationType) =>
+        public void AddInternalColumn(DataGridViewColumn col, IOutlookGridGroup group, SortOrder sortDirection, int groupIndex, int sortIndex, KryptonOutlookGridAggregationType aggregationType) =>
             AddInternalColumn(new OutlookGridColumn(col, group, sortDirection, groupIndex, sortIndex, null, aggregationType));
 
         /// <summary>
@@ -2197,13 +2202,13 @@ namespace Krypton.Toolkit
 
                 // --- NEW: AGGREGATION MENU ITEM CREATION (Done once) ---
                 // Create a sub-items collection for aggregations
-                KryptonContextMenuItem aggNone = new(AggregationType.None.ToString(), null, OnAggregationChange) { Tag = AggregationType.None };
-                KryptonContextMenuItem aggSum = new(AggregationType.Sum.ToString(), null, OnAggregationChange) { Tag = AggregationType.Sum };
-                KryptonContextMenuItem aggCount = new(AggregationType.Count.ToString(), null, OnAggregationChange) { Tag = AggregationType.Count };
-                KryptonContextMenuItem aggAverage = new(AggregationType.Average.ToString(), null, OnAggregationChange) { Tag = AggregationType.Average };
-                KryptonContextMenuItem aggMin = new(AggregationType.Min.ToString(), null, OnAggregationChange) { Tag = AggregationType.Min };
-                KryptonContextMenuItem aggMax = new(AggregationType.Max.ToString(), null, OnAggregationChange) { Tag = AggregationType.Max };
-                KryptonContextMenuItem aggMinMax = new(AggregationType.MinMax.ToString(), null, OnAggregationChange) { Tag = AggregationType.MinMax };
+                KryptonContextMenuItem aggNone = new(KryptonOutlookGridAggregationType.None.ToString(), null, OnAggregationChange) { Tag = KryptonOutlookGridAggregationType.None };
+                KryptonContextMenuItem aggSum = new(KryptonOutlookGridAggregationType.Sum.ToString(), null, OnAggregationChange) { Tag = KryptonOutlookGridAggregationType.Sum };
+                KryptonContextMenuItem aggCount = new(KryptonOutlookGridAggregationType.Count.ToString(), null, OnAggregationChange) { Tag = KryptonOutlookGridAggregationType.Count };
+                KryptonContextMenuItem aggAverage = new(KryptonOutlookGridAggregationType.Average.ToString(), null, OnAggregationChange) { Tag = KryptonOutlookGridAggregationType.Average };
+                KryptonContextMenuItem aggMin = new(KryptonOutlookGridAggregationType.Min.ToString(), null, OnAggregationChange) { Tag = KryptonOutlookGridAggregationType.Min };
+                KryptonContextMenuItem aggMax = new(KryptonOutlookGridAggregationType.Max.ToString(), null, OnAggregationChange) { Tag = KryptonOutlookGridAggregationType.Max };
+                KryptonContextMenuItem aggMinMax = new(KryptonOutlookGridAggregationType.MinMax.ToString(), null, OnAggregationChange) { Tag = KryptonOutlookGridAggregationType.MinMax };
 
                 _menuAggregationNumeric = new KryptonContextMenuItem("Aggregation", null, null);
                 _menuAggregationNumeric.Items.AddRange([aggNone, aggSum, aggCount, aggAverage, aggMin, aggMax, aggMinMax]);
@@ -2420,7 +2425,7 @@ namespace Krypton.Toolkit
         public void ClearInternalRows()
         {
             _internalRows.Clear();
-            _originalRows.Clear();
+            _originalRows?.Clear();
         }
 
         /// <summary>
@@ -2430,17 +2435,17 @@ namespace Krypton.Toolkit
         public void AssignRows(List<OutlookGridRow> l)
         {
             _internalRows = l;
-            _originalRows = l;
+            _originalRows = new HashSet<OutlookGridRow>(l);
         }
 
         /// <summary>
         /// Assign the rows to the internal list.
         /// </summary>
-        /// <param name="col">DataGridViewRowCollection</param>
-        public void AssignRows(DataGridViewRowCollection col)
+        /// <param name="rows">DataGridViewRowCollection</param>
+        public void AssignRows(DataGridViewRowCollection rows)
         {
-            _internalRows = col.Cast<OutlookGridRow>().ToList();
-            _originalRows = col.Cast<OutlookGridRow>().ToList();
+            _internalRows = rows.Cast<OutlookGridRow>().ToList();
+            _originalRows = new HashSet<OutlookGridRow>(rows.Cast<OutlookGridRow>());
         }
 
         /// <summary>
@@ -2609,15 +2614,15 @@ namespace Krypton.Toolkit
             }
         }
 
-        //private void RecursiveUpwardSetNodeCollaspse(OutlookGridRow r, bool collasped)
+        //private void RecursiveUpwardSetNodeCollapse(OutlookGridRow r, bool collapsed)
         //{
         //    //No events - for speed
         //    if (r.ParentNode != null)
         //    {
         //        if (r.ParentNode.Collapsed)
         //        {
-        //            r.ParentNode.Collapsed = collasped;
-        //            RecursiveUpwardSetNodeCollaspse(r.ParentNode, collapsed);
+        //            r.ParentNode.Collapsed = collapsed;
+        //            RecursiveUpwardSetNodeCollapse(r.ParentNode, collapsed);
         //        }
         //    }
         //    //sw.Stop();
@@ -3081,6 +3086,30 @@ namespace Krypton.Toolkit
                 //Get a list of rows (GroupRow and Non-GroupRow)
                 RecursiveFillOutlookGridRows(_groupCollection, tmp);
 
+                var firstColumn = this.Columns.GetFirstColumn(DataGridViewElementStates.Visible);
+                int firstColumnIndex = firstColumn == null ? -1 : firstColumn.Index;
+                bool _requireSummary = _fillMode != GridFillMode.GroupsOnly && _internalColumns.Any(c => c.AggregationType != KryptonOutlookGridAggregationType.None);
+                if (_requireSummary && _showGrandTotal)
+                {
+                    //Create the summary row
+                    var row = CreateSummaryRow(null, tmp.Where(r => !r.IsGroupRow && !r.IsSummaryRow).ToList(), firstColumnIndex);
+                    if (_summaryGrid != null)
+                    {
+                        SetSummaryGrid();
+                        var sRow = (OutlookGridRow)row.Clone()!;
+                        sRow.IsSummaryRow = true;
+                        sRow.CreateCells(_summaryGrid!, row.Cells.Cast<DataGridViewCell>().Select(c => c.Value).ToArray()!);
+                        _summaryGrid.Rows.Add(sRow);
+                        var sHeight = sRow.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
+                        _summaryGrid.Height = sHeight;
+                        _summaryGrid.ClearSelection();
+                    }
+                    else
+                    {
+                        tmp.Add(row);
+                    }
+                }
+
                 //Finally add the rows to underlying DataGridView after all the magic !
                 Rows.AddRange(tmp.ToArray());
             }
@@ -3162,7 +3191,7 @@ namespace Krypton.Toolkit
             //OutlookGridRow? grSummaryRow;
             var firstColumn = this.Columns.GetFirstColumn(DataGridViewElementStates.Visible);
             int firstColumnIndex = firstColumn == null ? -1 : firstColumn.Index;
-            bool _requireSummary = _fillMode != GridFillMode.GroupsOnly && _internalColumns.Any(c => c.AggregationType != AggregationType.None);
+            bool _requireSummary = _fillMode != GridFillMode.GroupsOnly && _internalColumns.Any(c => c.AggregationType != KryptonOutlookGridAggregationType.None);
 
             //for each group
             for (var i = 0; i < l.List.Count; i++)
@@ -3184,6 +3213,14 @@ namespace Krypton.Toolkit
                     if (gridGroup.Children.Count > 0)
                     {
                         RecursiveFillOutlookGridRows(gridGroup.Children, tmp);
+                        if (_requireSummary && _showSubTotal)
+                        {
+                            //var dataRows = gridGroup.Children.List.SelectMany(c => c!.Rows).ToList();
+                            var dataRows = GetAllRowsRecursive(gridGroup);
+                            //Create the summary row
+                            var row = CreateSummaryRow(gridGroup, dataRows, firstColumnIndex);
+                            tmp.Add(row);
+                        }
                     }
 
                     //We add the rows associated with the current group
@@ -3195,7 +3232,7 @@ namespace Krypton.Toolkit
                     {
                         NonGroupedRecursiveFillOutlookGridRows(gridGroup.Rows, tmp);
                     }
-                    if (_requireSummary && _showSubTotal)
+                    if (gridGroup.Children.Count == 0 && _requireSummary && _showSubTotal)
                     {
                         //Create the summary row
                         var row = CreateSummaryRow(gridGroup, gridGroup.Rows, firstColumnIndex);
@@ -3203,12 +3240,66 @@ namespace Krypton.Toolkit
                     }
                 }
             }
-            if (_requireSummary && _showGrandTotal)
+        }
+
+        /// <summary>
+        /// Recursively retrieves all data rows (non-group and non-summary rows) belonging to the current group
+        /// and all its descendant child groups. This method uses an iterative approach for recursion.
+        /// </summary>
+        /// <param name="currentGroup">The current <see cref="IOutlookGridGroup"/> to start collecting rows from.</param>
+        /// <returns>A <see cref="List{T}"/> of <see cref="OutlookGridRow"/> objects that are data rows within the specified group hierarchy.</returns>
+        internal static List<OutlookGridRow> GetAllRowsRecursiveLinq(IOutlookGridGroup? currentGroup)
+        {
+            if (currentGroup == null)
             {
-                //Create the summary row
-                var row = CreateSummaryRow(null, tmp.Where(r => !r.IsGroupRow && !r.IsSummaryRow).ToList(), firstColumnIndex);
-                tmp.Add(row);
+                return [];
             }
+
+            // Initialize with the *direct data rows* of the current group.
+            // Important: Filter out group rows and summary rows to only include actual data entries.
+            var allDataRows = (currentGroup.Rows ?? Enumerable.Empty<OutlookGridRow>())
+                              .Where(r => !r.IsGroupRow && !r.IsSummaryRow)
+                              .ToList(); // Convert to list to make AddRange efficient
+
+            // Recursively collect data rows from all children.
+            // Iterates through the actual list of child groups.
+            if (currentGroup.Children.List != null && currentGroup.Children.List.Count > 0)
+            {
+                foreach (var childGroup in currentGroup.Children.List)
+                {
+                    // Recursively call for each child group and add their collected data rows to the main list.
+                    allDataRows.AddRange(GetAllRowsRecursiveLinq(childGroup));
+                }
+            }
+            return allDataRows;
+        }
+
+        /// <summary>
+        /// Recursively retrieves all data rows (non-group and non-summary rows) belonging to the current group
+        /// and all its descendant child groups. This method uses a pure LINQ approach for recursion.
+        /// </summary>
+        /// <param name="currentGroup">The current <see cref="IOutlookGridGroup"/> to start collecting rows from.</param>
+        /// <returns>A <see cref="List{T}"/> of <see cref="OutlookGridRow"/> objects that are data rows within the specified group hierarchy.</returns>
+        public static List<OutlookGridRow> GetAllRowsRecursive(IOutlookGridGroup? currentGroup)
+        {
+            if (currentGroup == null)
+            {
+                return [];
+            }
+
+            // Get current group's direct data rows, filtering out any group or summary rows.
+            var directDataRows = (currentGroup.Rows ?? Enumerable.Empty<OutlookGridRow>())
+                                 .Where(r => !r.IsGroupRow && !r.IsSummaryRow);
+
+            // Get all data rows from all descendants by recursively flattening the child groups.
+            // The Where clause ensures that only actual data rows are collected from the recursive calls.
+            var descendantDataRows = currentGroup.Children.List?
+                                         .SelectMany(child => GetAllRowsRecursive(child))
+                                         .Where(r => !r.IsGroupRow && !r.IsSummaryRow) // Ensure filtering at each level
+                                         ?? [];
+
+            // Concatenate the direct data rows with all descendant data rows and convert to a list.
+            return directDataRows.Concat(descendantDataRows).ToList();
         }
 
         #endregion Grid Fill functions
@@ -3350,7 +3441,7 @@ namespace Krypton.Toolkit
         /// <param name="dataTable">The <see cref="System.Data.DataTable"/> to be used as the data source.</param>
         public void SetDataSource([DisallowNull] System.Data.DataTable dataTable)
         {
-            ClearEverything();
+            ClearEverythingOnSetDataSource();
             SuspendLayout();
             AutoGenerateKryptonColumns = false;
 
@@ -3434,7 +3525,7 @@ namespace Krypton.Toolkit
         /// </remarks>
         public void SetDataSource<T>([DisallowNull] List<T> data) where T : class
         {
-            ClearEverything();
+            ClearEverythingOnSetDataSource();
             SuspendLayout();
             AutoGenerateKryptonColumns = false;
 
@@ -3540,7 +3631,7 @@ namespace Krypton.Toolkit
         /// </remarks>
         public void SetDataSource([DisallowNull] List<object[]> data)
         {
-            ClearEverything();
+            ClearEverythingOnSetDataSource();
             SuspendLayout();
             AutoGenerateKryptonColumns = false;
 
@@ -3681,7 +3772,7 @@ namespace Krypton.Toolkit
         /// </remarks>
         public void SetDataSource([DisallowNull] List<Dictionary<string, object>> data)
         {
-            ClearEverything();
+            ClearEverythingOnSetDataSource();
             SuspendLayout();
             AutoGenerateKryptonColumns = false;
 
@@ -3836,6 +3927,26 @@ namespace Krypton.Toolkit
             AssignRows(l);
             ForceRefreshGroupBox();
             Fill();
+        }
+
+        /// <summary>
+        /// Clears everything in the OutlookGrid (groups, rows, columns, DataGridViewColumns). Ready for a completely new start.
+        /// </summary>
+        public void ClearEverythingOnSetDataSource()
+        {
+            _groupCollection.Clear();
+            _internalRows.Clear();
+            _originalRows?.Clear();
+            if (AutoGenerateColumns)
+                Columns.Clear();
+            if (AutoGenerateColumns && AutoGenerateInternalColumns)
+                _internalColumns.Clear();
+
+            ConditionalFormatting.Clear();
+            _menuItems = null; // Reset for columns context menu reset the columns list
+            _contextMenu = null;
+            DataSource = null;
+            //Snif everything is gone ! Be Ready for a new start !
         }
 
         /// <summary>
@@ -4003,7 +4114,7 @@ namespace Krypton.Toolkit
         /// or more commonly within an event handler subscribed to <see cref="OnInternalColumnCreating"/>:</para>
         /// <list type="bullet">
         /// <item>
-        /// <term>Setting an <see cref="AggregationType"/> for a specific column:</term>
+        /// <term>Setting an <see cref="KryptonOutlookGridAggregationType"/> for a specific column:</term>
         /// <description>
         /// <code language="csharp">
         /// if (column.Name == "QuantityColumn")
@@ -4046,7 +4157,7 @@ namespace Krypton.Toolkit
         /// <summary>
         /// Automatically creates internal columns for all existing columns in the KryptonOutlookGrid.
         /// </summary>
-        public void AutoCreateInternalColumn()
+        public void AutoCreateInternalColumns()
         {
             DataGridViewColumn currentColumn;
             _internalColumns.Clear();
@@ -4060,6 +4171,40 @@ namespace Krypton.Toolkit
         #endregion Set DataSource
 
         #region Aggregation
+
+        private KryptonOutlookGrid? _summaryGrid = null;
+
+        /// <summary>
+        /// Gets or sets the SummaryGrid associated with this KryptonOutlookGrid.
+        /// </summary>
+        [Category("Behavior")]
+        [Description("Associate the KryptonOutlookGrid for summary with the grid.")]
+        [DefaultValue(null)]
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public KryptonOutlookGrid? SummaryGrid
+        {
+            get => _summaryGrid;
+            set
+            {
+                if (_summaryGrid != value)
+                {
+                    if (_summaryGrid != null && value == null)
+                    {
+                        this.ColumnWidthChanged -= KryptonOutlookGrid_ColumnWidthChanged;
+                        this.ColumnDisplayIndexChanged -= KryptonOutlookGrid_ColumnDisplayIndexChanged;
+                        this.Scroll -= KryptonOutlookGrid_Scroll;
+                    }
+                    _summaryGrid = value;
+                    if (_summaryGrid != null)
+                    {
+                        this.ColumnWidthChanged += KryptonOutlookGrid_ColumnWidthChanged;
+                        this.ColumnDisplayIndexChanged += KryptonOutlookGrid_ColumnDisplayIndexChanged;
+                        this.Scroll += KryptonOutlookGrid_Scroll;
+                    }
+                }
+            }
+        }
 
         private bool _showSubTotal = false;
         /// <summary>
@@ -4098,6 +4243,7 @@ namespace Krypton.Toolkit
                 if (_showGrandTotal != value)
                 {
                     _showGrandTotal = value;
+                    _summaryGrid?.Visible = _showGrandTotal;
                     Fill();
                 }
             }
@@ -4120,7 +4266,7 @@ namespace Krypton.Toolkit
             {
                 if (item.Tag != null)
                 {
-                    var aggregationType = (AggregationType)Enum.Parse(typeof(AggregationType), item.Tag.ToString()!);
+                    var aggregationType = (KryptonOutlookGridAggregationType)Enum.Parse(typeof(KryptonOutlookGridAggregationType), item.Tag.ToString()!);
                     if (col!.AggregationType != aggregationType)
                     {
                         col!.AggregationType = aggregationType;
@@ -4131,20 +4277,20 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Calculates the aggregated value for a given column within a list of rows based on the column's <see cref="AggregationType"/>.
+        /// Calculates the aggregated value for a given column within a list of rows based on the column's <see cref="KryptonOutlookGridAggregationType"/>.
         /// Supports Sum, Average, Min, Max, and Count.
         /// </summary>
         /// <param name="rows">The list of <see cref="OutlookGridRow"/> objects to aggregate.</param>
         /// <param name="column">The <see cref="OutlookGridColumn"/> for which to perform aggregation,
-        /// which also defines the <see cref="AggregationType"/>.</param>
+        /// which also defines the <see cref="KryptonOutlookGridAggregationType"/>.</param>
         /// <returns>
         /// The calculated aggregated value as an <see cref="object"/> (e.g., double for Sum/Average,
         /// object for Min/Max, int for Count), or <c>null</c> if no aggregation is specified
-        /// (<see cref="AggregationType.None"/>) or if an error occurs during calculation (e.g., non-numeric data for numeric aggregations).
+        /// (<see cref="KryptonOutlookGridAggregationType.None"/>) or if an error occurs during calculation (e.g., non-numeric data for numeric aggregations).
         /// </returns>
         private object? CalculateAggregation(List<OutlookGridRow> rows, OutlookGridColumn column)
         {
-            if (column.AggregationType == AggregationType.None)
+            if (column.AggregationType == KryptonOutlookGridAggregationType.None)
             {
                 return null;
             }
@@ -4155,17 +4301,17 @@ namespace Krypton.Toolkit
 
                 switch (column.AggregationType)
                 {
-                    case AggregationType.Sum:
+                    case KryptonOutlookGridAggregationType.Sum:
                         return rows.Cast<OutlookGridRow>().Sum(r => Convert.ToDouble(r.Cells[columnIndex].Value));
-                    case AggregationType.Count:
+                    case KryptonOutlookGridAggregationType.Count:
                         return rows.Cast<OutlookGridRow>().Count(r => r.Cells[columnIndex].Value != null);
-                    case AggregationType.Average:
+                    case KryptonOutlookGridAggregationType.Average:
                         return rows.Cast<OutlookGridRow>().Average(r => Convert.ToDouble(r.Cells[columnIndex].Value));
-                    case AggregationType.Min:
+                    case KryptonOutlookGridAggregationType.Min:
                         return rows.Cast<OutlookGridRow>().Min(r => r.Cells[columnIndex].Value);
-                    case AggregationType.Max:
+                    case KryptonOutlookGridAggregationType.Max:
                         return rows.Cast<OutlookGridRow>().Max(r => r.Cells[columnIndex].Value);
-                    case AggregationType.MinMax:
+                    case KryptonOutlookGridAggregationType.MinMax:
                         var minValue = rows.Cast<OutlookGridRow>().Min(r => r.Cells[columnIndex].Value);
                         var maxValue = rows.Cast<OutlookGridRow>().Max(r => r.Cells[columnIndex].Value);
                         string format = column.DataGridViewColumn.DefaultCellStyle.Format;
@@ -4181,93 +4327,6 @@ namespace Krypton.Toolkit
                 // Return null if there's an issue with conversion or aggregation (e.g., non-numeric data for sum/average)
                 return null;
             }
-        }
-
-        /// <summary>
-        /// Creates a summary row for a group or for the grand total within the KryptonOutlookGrid.
-        /// </summary>
-        /// <param name="gridGroup">
-        /// The group for which the summary row is being created. If <c>null</c>, a grand total summary row is created.
-        /// </param>
-        /// <param name="rows">
-        /// The list of <see cref="OutlookGridRow"/> objects that belong to the current group
-        /// or all rows if creating a grand total summary.
-        /// </param>
-        /// <param name="firstColumnIndex">
-        /// The index of the first visible column. This column will display the total label (e.g., "Grand Total" or "Total for [GroupName]").
-        /// </param>
-        /// <returns>
-        /// A new <see cref="OutlookGridRow"/> configured as a summary row with aggregated values.
-        /// </returns>
-        /// <remarks>
-        /// <para>
-        /// This method clones a <see cref="DataGridView.RowTemplate"/> to create the summary row.
-        /// It then populates the cells of the summary row based on the <see cref="AggregationType"/>
-        /// defined for each internal column (<c>_internalColumns</c>).
-        /// </para>
-        /// <para>
-        /// For columns with <see cref="AggregationType.None"/>:
-        /// <list type="bullet">
-        ///     <item>If it's the <paramref name="firstColumnIndex"/>, it displays "Grand Total" or "Total for [GroupValue]".</item>
-        ///     <item>Otherwise, the cell value is set to <c>null</c>.</item>
-        /// </list>
-        /// </para>
-        /// <para>
-        /// For columns with other <see cref="AggregationType"/> (e.g., Sum, Average, Count, MinMax):
-        /// <list type="bullet">
-        ///     <item>It calls <c>CalculateAggregation</c> to get the aggregated value.</item>
-        ///     <item>The cell value is formatted to display the aggregation type and the aggregated value.</item>
-        ///     <item>For <see cref="AggregationType.MinMax"/>, it specifically formats as "Min - Max: [Value]".</item>
-        ///     <item>Otherwise, it formats as "[AggregationType]: [FormattedValue]" using the column's default cell style format.</item>
-        /// </list>
-        /// The row's height is adjusted to match the group's height (if applicable) to ensure correct rendering, especially on high DPI displays.
-        /// </para>
-        /// </remarks>
-        private OutlookGridRow CreateSummaryRowX(IOutlookGridGroup? gridGroup, List<OutlookGridRow> rows, int firstColumnIndex)
-        {
-            OutlookGridRow? grSummaryRow;
-            //Create the summary row
-            grSummaryRow = RowTemplate.Clone() as OutlookGridRow;
-            grSummaryRow!.Group = gridGroup;
-            grSummaryRow.IsSummaryRow = true;
-
-            if (gridGroup != null)
-                grSummaryRow.Height = gridGroup.Height;
-            grSummaryRow.MinimumHeight = grSummaryRow.Height; //To handle auto resize rows correctly on high dpi
-            object values = gridGroup == null ? null! : gridGroup.Value!;
-            grSummaryRow.CreateCells(this, [values]);
-            for (int j = 0; j < _internalColumns.Count; j++)
-            {
-                var col = _internalColumns[j];
-                if (col.AggregationType == AggregationType.None)
-                {
-                    if (firstColumnIndex > -1 && j == firstColumnIndex)
-                    {
-                        grSummaryRow.Cells[j].Value = gridGroup == null ? "Grand Total" : $"Total for {values}";
-                    }
-                    else
-                    {
-                        grSummaryRow.Cells[j].Value = null;
-                    }
-                    continue;
-                }
-                object? aggregatedValue = CalculateAggregation(rows, _internalColumns[j]);
-                // Format the display value
-                if (aggregatedValue != null)
-                {
-                    if (_internalColumns[j].AggregationType == AggregationType.MinMax)
-                    {
-                        grSummaryRow.Cells[j].Value = $"Min - Max: {aggregatedValue}";
-                    }
-                    else
-                    {
-                        string format = _internalColumns[j].DataGridViewColumn.DefaultCellStyle.Format;
-                        var formattedValue = !string.IsNullOrEmpty(format) ? string.Format("{0:" + format + "}", aggregatedValue) : aggregatedValue;
-                        grSummaryRow.Cells[j].Value = $"{col.AggregationType}: {formattedValue}";
-                    }
-                }
-            }
-            return grSummaryRow;
         }
 
         /// <summary>
@@ -4296,14 +4355,14 @@ namespace Krypton.Toolkit
         /// The row's height is adjusted to match the group's height (if applicable) for correct rendering, especially on high DPI.
         /// </para>
         /// <para>
-        /// Cells are populated based on the <see cref="AggregationType"/> of each column in `_internalColumns`:
+        /// Cells are populated based on the <see cref="KryptonOutlookGridAggregationType"/> of each column in `_internalColumns`:
         /// <list type="bullet">
         ///     <item>
-        ///         For columns with <see cref="AggregationType.None"/>: If the column is the <paramref name="firstColumnIndex"/>,
+        ///         For columns with <see cref="KryptonOutlookGridAggregationType.None"/>: If the column is the <paramref name="firstColumnIndex"/>,
         ///         it displays the "Grand Total" or "Total for [GroupValue]" text; otherwise, the cell value is <c>null</c>.
         ///     </item>
         ///     <item>
-        ///         For columns with other <see cref="AggregationType"/>s: The method calls `CalculateAggregation` to compute
+        ///         For columns with other <see cref="KryptonOutlookGridAggregationType"/>s: The method calls `CalculateAggregation` to compute
         ///         the raw aggregated value. This value is then formatted:
         ///         <list type="bullet">
         ///             <item>First, using the <see cref="System.Windows.Forms.DataGridViewCellStyle.Format"/>
@@ -4313,7 +4372,7 @@ namespace Krypton.Toolkit
         ///                   previously formatted aggregated value (as arguments {0}, {1}, and {2} respectively).</item>
         ///             <item>If <see cref="OutlookGridColumn.AggregationFormatString"/> is not set or fails, it defaults
         ///                   to "[AggregationType]: [FormattedValue]".</item>
-        ///             <item>For <see cref="AggregationType.MinMax"/>, `CalculateAggregation` is assumed to return a string
+        ///             <item>For <see cref="KryptonOutlookGridAggregationType.MinMax"/>, `CalculateAggregation` is assumed to return a string
         ///                   that is used directly.</item>
         ///         </list>
         ///     </item>
@@ -4348,10 +4407,10 @@ namespace Krypton.Toolkit
             for (int j = 0; j < _internalColumns.Count; j++)
             {
                 var col = _internalColumns[j];
-                object? aggregatedValue = null;
+                object? aggregatedValue;
                 string? displayValue = null;
 
-                if (col.AggregationType == AggregationType.None)
+                if (col.AggregationType == KryptonOutlookGridAggregationType.None)
                 {
                     if (firstColumnIndex > -1 && j == firstColumnIndex)
                     {
@@ -4372,7 +4431,7 @@ namespace Krypton.Toolkit
                 {
                     string formattedAggregatedValueForCell;
                     grSummaryRowForGroup.Cells[j].Value = aggregatedValue;
-                    if (col.AggregationType == AggregationType.MinMax)
+                    if (col.AggregationType == KryptonOutlookGridAggregationType.MinMax)
                     {
                         // MinMax is special: CalculateAggregation already returns a formatted string
                         formattedAggregatedValueForCell = aggregatedValue.ToString()!;
@@ -4431,146 +4490,89 @@ namespace Krypton.Toolkit
             return grSummaryRow;
         }
 
-        /// <summary>
-        /// Creates a summary row for a given group or a grand total for the entire grid,
-        /// with enhanced formatting options for aggregated values.
-        /// </summary>
-        /// <param name="gridGroup">
-        /// The <see cref="IOutlookGridGroup"/> for which the summary row is being created.
-        /// If <c>null</c>, this method generates a 'Grand Total' summary row.
-        /// </param>
-        /// <param name="rows">
-        /// The list of <see cref="OutlookGridRow"/> instances that belong to the specified group (or all rows for grand total).
-        /// These rows are used to calculate the aggregated values.
-        /// </param>
-        /// <param name="firstColumnIndex">
-        /// The index of the column where the group's descriptive text (e.g., "Total for [GroupValue]" or "Grand Total")
-        /// should be displayed. If -1, no specific column is designated for this text.
-        /// </param>
-        /// <returns>
-        /// A new <see cref="OutlookGridRow"/> configured as a summary row, containing aggregated values
-        /// formatted according to column-specific aggregation types and customizable format strings.
-        /// </returns>
-        /// <remarks>
-        /// <para>
-        /// This method clones the grid's <see cref="System.Windows.Forms.DataGridView.RowTemplate"/> to initialize the summary row.
-        /// It sets properties like <see cref="OutlookGridRow.Group"/> and <see cref="OutlookGridRow.IsSummaryRow"/>.
-        /// The row's height is adjusted to match the group's height (if applicable) for correct rendering, especially on high DPI.
-        /// </para>
-        /// <para>
-        /// Cells are populated based on the <see cref="AggregationType"/> of each column in `_internalColumns`:
-        /// <list type="bullet">
-        ///     <item>
-        ///         For columns with <see cref="AggregationType.None"/>: If the column is the <paramref name="firstColumnIndex"/>,
-        ///         it displays the "Grand Total" or "Total for [GroupValue]" text; otherwise, the cell value is <c>null</c>.
-        ///     </item>
-        ///     <item>
-        ///         For columns with other <see cref="AggregationType"/>s:
-        ///         <list type="bullet">
-        ///             <item>The raw aggregated value is calculated using <c>CalculateAggregation</c>.</item>
-        ///             <item>The aggregated value is first formatted using the <see cref="System.Windows.Forms.DataGridViewCellStyle.Format"/>
-        ///                   of the associated <see cref="System.Windows.Forms.DataGridViewColumn"/> (except for <see cref="AggregationType.MinMax"/>,
-        ///                   which is assumed to return an already formatted string).</item>
-        ///             <item>Finally, if the <see cref="OutlookGridColumn.AggregationFormatString"/> is provided for the column,
-        ///                   it formats the final display string using custom named placeholders:
-        ///                   `{GroupText}`, `{Aggregate}`, and `{Value}` for the group's text, aggregation type,
-        ///                   and the previously formatted aggregated value, respectively.</item>
-        ///             <item>If <see cref="OutlookGridColumn.AggregationFormatString"/> is not set, or if an error occurs during custom formatting,
-        ///                   it defaults to a standard format (e.g., "[AggregationType]: [FormattedValue]").</item>
-        ///         </list>
-        ///     </item>
-        /// </list>
-        /// </para>
-        /// </remarks>
-        private OutlookGridRow CreateSummaryRowO2(IOutlookGridGroup? gridGroup, List<OutlookGridRow> rows, int firstColumnIndex)
+        #region Set Total Grid
+
+        private void KryptonOutlookGrid_Scroll(object? sender, ScrollEventArgs e)
         {
-            OutlookGridRow? grSummaryRow;
-            grSummaryRow = RowTemplate.Clone() as OutlookGridRow;
-            grSummaryRow!.Group = gridGroup;
-            grSummaryRow.IsSummaryRow = true;
-
-            if (gridGroup != null)
-                grSummaryRow.Height = gridGroup.Height;
-            grSummaryRow.MinimumHeight = grSummaryRow.Height;
-
-            object groupText = gridGroup == null ? "Grand Total" : gridGroup.Value!;
-            grSummaryRow.CreateCells(this, new object[_internalColumns.Count]);
-
-            for (int j = 0; j < _internalColumns.Count; j++)
+            if (_summaryGrid != null && e.ScrollOrientation == ScrollOrientation.HorizontalScroll)
             {
-                var col = _internalColumns[j];
-                object? aggregatedValue = null;
-                string? displayValue = null;
-
-                if (col.AggregationType == AggregationType.None)
-                {
-                    if (firstColumnIndex > -1 && j == firstColumnIndex)
-                    {
-                        grSummaryRow.Cells[j].Value = groupText;
-                    }
-                    else
-                    {
-                        grSummaryRow.Cells[j].Value = null;
-                    }
-                    continue;
-                }
-
-                aggregatedValue = CalculateAggregation(rows, col);
-
-                if (aggregatedValue != null)
-                {
-                    string formattedAggregatedValueForCell;
-
-                    if (col.AggregationType == AggregationType.MinMax)
-                    {
-                        formattedAggregatedValueForCell = aggregatedValue?.ToString() ?? string.Empty;
-                    }
-                    else
-                    {
-                        string cellValueFormat = col.DataGridViewColumn.DefaultCellStyle.Format;
-                        if (!string.IsNullOrEmpty(cellValueFormat))
-                        {
-                            try
-                            {
-                                formattedAggregatedValueForCell = string.Format("{0:" + cellValueFormat + "}", aggregatedValue);
-                            }
-                            catch (FormatException)
-                            {
-                                formattedAggregatedValueForCell = aggregatedValue?.ToString() ?? string.Empty;
-                            }
-                        }
-                        else
-                        {
-                            formattedAggregatedValueForCell = aggregatedValue?.ToString() ?? string.Empty;
-                        }
-                    }
-
-                    // --- Custom Named Placeholder Replacement ---
-                    if (!string.IsNullOrEmpty(col.AggregationFormatString))
-                    {
-                        displayValue = col.AggregationFormatString!
-                            .Replace("{GroupText}", groupText?.ToString() ?? "")
-                            .Replace("{Aggregate}", col.AggregationType.ToString())
-                            .Replace("{Value}", formattedAggregatedValueForCell);
-                    }
-                    else
-                    {
-                        // Default if no specific AggregationFormatString is provided
-                        if (col.AggregationType == AggregationType.MinMax)
-                        {
-                            displayValue = formattedAggregatedValueForCell; // MinMax is already formatted
-                        }
-                        else
-                        {
-                            displayValue = $"{col.AggregationType}: {formattedAggregatedValueForCell}";
-                        }
-                    }
-                }
-
-                grSummaryRow.Cells[j].Value = displayValue;
+                _summaryGrid?.HorizontalScrollingOffset = this.HorizontalScrollingOffset;
             }
-            return grSummaryRow;
         }
+
+        private void KryptonOutlookGrid_ColumnDisplayIndexChanged(object? sender, DataGridViewColumnEventArgs e)
+        {
+            if (_summaryGrid != null && _summaryGrid.Columns.Count > 0)
+                for (int i = 0; i < this.ColumnCount; i++)
+                {
+                    if (_summaryGrid.ColumnCount > i) // Added bounds check
+                        _summaryGrid.Columns[i].DisplayIndex = this.Columns[i].DisplayIndex;
+                }
+        }
+
+        private void KryptonOutlookGrid_ColumnWidthChanged(object? sender, DataGridViewColumnEventArgs e)
+        {
+            if (_summaryGrid != null && _summaryGrid.ColumnCount > 0 && e.Column.Index < _summaryGrid.ColumnCount)
+            {
+                _summaryGrid.Columns[e.Column.Index].Width = this.Columns[e.Column.Index].Width;
+                if (_summaryGrid.Rows.Count > 0)
+                {
+                    //_summaryGrid.Height = _summaryGrid.Rows[0].Height;
+                    var sHeight = (_summaryGrid.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
+                    _summaryGrid.Height = sHeight;
+                    _summaryGrid.Invalidate();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Configures and populates a 'total' DataGridView based on the data and column settings of a 'parent' DataGridView.
+        /// It calculates sums, averages, or counts for columns marked with specific tags.
+        /// </summary>
+        public void SetSummaryGrid()
+        {
+            if (_summaryGrid == null) return;
+
+            _summaryGrid.SuspendLayout();
+
+            // Configure totalGrid appearance and properties
+            _summaryGrid.AllowUserToAddRows = false;
+            _summaryGrid.AllowUserToDeleteRows = false;
+            _summaryGrid.ColumnHeadersVisible = false;
+            _summaryGrid.Enabled = false;
+            _summaryGrid.ReadOnly = true;
+            _summaryGrid.TabStop = false;
+            _summaryGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            _summaryGrid.ScrollBars = ScrollBars.None;
+            _summaryGrid.RowHeadersVisible = this.RowHeadersVisible;
+            _summaryGrid.RowHeadersWidth = this.RowHeadersWidth;
+            _summaryGrid.Rows.Clear();
+            _summaryGrid.Columns.Clear();
+            //_summaryGrid.StateDisabled = this.StateNormal;
+            /*_summaryGrid.StateCommon.DataCell.Content.Color1 = this.ColumnHeadersDefaultCellStyle.ForeColor;
+            Font font = this.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelNormalControl, PaletteState.Normal) ??
+                                 new Font(this.DefaultCellStyle.Font!, FontStyle.Bold);
+            _summaryGrid.StateCommon.DataCell.Content.Font = font;*/
+
+            // Add columns to totalGrid
+            foreach (DataGridViewColumn parentCol in this.Columns)
+            {
+                try
+                {
+                    var index = _summaryGrid.Columns.Add(parentCol.Name, "");
+                    _summaryGrid.Columns[index].Width = parentCol.Width;
+                    _summaryGrid.Columns[index].Visible = parentCol.Visible;
+                    _summaryGrid.Columns[index].ValueType = parentCol.ValueType;
+                    _summaryGrid.Columns[index].DefaultCellStyle.Alignment = parentCol.DefaultCellStyle.Alignment;
+                    _summaryGrid.Columns[index].DefaultCellStyle.Format = parentCol.DefaultCellStyle.Format;
+                    _summaryGrid.Columns[index].SortMode = DataGridViewColumnSortMode.NotSortable;
+                }
+                catch (Exception) { /* Handle exceptions gracefully */ }
+            }
+            _summaryGrid.ResumeLayout();
+        }
+
+        #endregion Set Total Grid
 
         #endregion Aggregation
 
@@ -4592,12 +4594,13 @@ namespace Krypton.Toolkit
         /// <param name="e">An <see cref="EventArgs"/> object that contains the event data.</param>
         private void OnFilterClick(object? sender, EventArgs e)
         {
-            Filter? filterBuilder = null;
+            KryptonOutlookGridFilter? filterBuilder = null;
             try
             {
                 var col = _internalColumns.FindFromColumnIndex(_colSelected)!;
-                var valueType = col.DataGridViewColumn.ValueType ?? typeof(string);
-                SourceColumn column = new(col.DataGridViewColumn.Name, col.DataGridViewColumn.HeaderText, valueType.Name);
+                var gridColumn = col.DataGridViewColumn;
+                var valueType = gridColumn.ValueType ?? typeof(string);
+                KryptonOutlookGridFilterSourceColumn column = new(gridColumn.Name, gridColumn.HeaderText, valueType.Name, gridColumn.DefaultCellStyle.Format);
                 filterBuilder = new(column, col.Filters)
                 {
                     Text = $"Filter for {col.DataGridViewColumn.HeaderText}"
@@ -4622,10 +4625,10 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Handles the <see cref="Filter.FilterChanged"/> event from the filter builder dialog,
+        /// Handles the <see cref="KryptonOutlookGridFilter.FilterChanged"/> event from the filter builder dialog,
         /// applying the filter to the data when the filter criteria change.
         /// </summary>
-        /// <param name="sender">The source of the event, which is the <see cref="Filter"/> instance.</param>
+        /// <param name="sender">The source of the event, which is the <see cref="KryptonOutlookGridFilter"/> instance.</param>
         /// <param name="e">An <see cref="EventArgs"/> object that contains the event data.</param>
         private void FilterBuilder_FilterChanged(object sender, EventArgs e)
         {
@@ -4634,13 +4637,12 @@ namespace Krypton.Toolkit
                 ApplyFilter();
                 return;
             }
-            Filter currentFilter = (Filter)sender;
+            KryptonOutlookGridFilter currentFilter = (KryptonOutlookGridFilter)sender;
             var fData = currentFilter.FilterData;
-            if (fData != null)
-                ApplyFilter(fData);
-            /*var filterString = currentFilter.FilterString.Trim();
-            if (!string.IsNullOrEmpty(filterString))
-                FilterColumn(filterString);*/
+            if (fData != null && fData.Count == 0)
+                fData = null;
+            //if (fData != null)
+            ApplyFilter(fData);
         }
 
         /// <summary>
@@ -4672,14 +4674,15 @@ namespace Krypton.Toolkit
         /// <summary>
         /// Applies the current set of filters to the grid's data, updating the displayed rows.
         /// </summary>
-        /// <param name="currentFilter">An optional list of <see cref="FilterField"/> objects representing
+        /// <param name="currentFilter">An optional list of <see cref="KryptonOutlookGridFilterField"/> objects representing
         /// filters to be applied immediately. If null, existing column filters are used.</param>
-        public void ApplyFilter(List<FilterField>? currentFilter = null)
+        public void ApplyFilter(List<KryptonOutlookGridFilterField>? currentFilter = null)
         {
             int grpInfo = 1;
-            List<FilterField> allFilters = [];
+            List<KryptonOutlookGridFilterField> allFilters = [];
             List<OutlookGridColumn> filteredColumns = [];
-            _internalRows = _originalRows;
+            var list = _originalRows;
+            //_internalRows = _originalRows.ToList();
 
             if (currentFilter != null)
                 filteredColumns = _internalColumns.Where(col => col.Filters != null && col.DataGridViewColumn.Index != _colSelected).ToList();
@@ -4691,11 +4694,12 @@ namespace Krypton.Toolkit
                 var fExpression = ToolBarFilters.ToExpression<OutlookGridRow>(Columns);
                 // compile and use expression
                 Func<OutlookGridRow, bool> cFilter = fExpression.Compile();
-                _internalRows = _originalRows.Where(cFilter).ToList();
+                list = new HashSet<OutlookGridRow>(_originalRows.Where(cFilter));
             }
 
             if (filteredColumns.Count == 0 && currentFilter == null)
             {
+                _internalRows = list.ToList();
                 Fill();
                 return;
             }
@@ -4732,7 +4736,7 @@ namespace Krypton.Toolkit
             var filterExpression = allFilters.ToExpression<OutlookGridRow>(Columns);
             // compile and use expression
             Func<OutlookGridRow, bool> compiledFilter = filterExpression.Compile();
-            _internalRows = _internalRows.Where(compiledFilter).ToList();
+            _internalRows = list.Where(compiledFilter).ToList();
             /*var filteredResults = _internalRows.Where(compiledFilter).ToList();
             _internalRows = filteredResults;*/
 
@@ -4808,14 +4812,6 @@ namespace Krypton.Toolkit
                 if (_highlightSearchText != value)
                 {
                     _highlightSearchText = value;
-                    if (_highlightSearchText)
-                    {
-                        this.CellPainting += KryptonOutlookGrid_CellPainting;
-                    }
-                    else
-                    {
-                        this.CellPainting -= KryptonOutlookGrid_CellPainting;
-                    }
                 }
             }
         }
@@ -4871,13 +4867,6 @@ namespace Krypton.Toolkit
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public bool UseFormattedValueForSearch { get; set; } = true;
 
-        private void KryptonOutlookGrid_CellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
-        {
-            if (!HighlightSearchText || !EnableSearchOnKeyPress || !this.ReadOnly)
-                return;
-            PaintSearchText(e, SearchText);
-        }
-
         /// <summary>
         /// Stores the current search text entered by the user.
         /// </summary>
@@ -4921,8 +4910,17 @@ namespace Krypton.Toolkit
             {
                 matchText = SearchInOutlookGridRows(text, currentCellIndex);
             }
-            else if (this.DataSource is System.Data.DataTable dataTable)
+            else if (this.DataSource != null)
             {
+                var dataTable = SharedDataFunctions.GetSourceTable(this);
+                if (dataTable == null)
+                {
+                    throw new InvalidOperationException(
+                        "Search cannot be performed. The grid's data source is either not loaded or is in an unsupported format for searching. " +
+                        "Please ensure data is loaded using `AssignRows()`, `SetDataSource()`, by assigning a `DataTable` to the `DataSource` property, " +
+                        "or by directly populating grid rows when `DataSource` is `null`."
+                    );
+                }
                 matchText = SearchInDataTable(text, dataTable);
             }
             else if (this.DataSource == null)
@@ -4978,7 +4976,7 @@ namespace Krypton.Toolkit
         /// </remarks>
         private string SearchInOutlookGridRows(string textToSearch, int currentCellIndex = -1)
         {
-            List<OutlookGridRow> lst = [];
+            HashSet<OutlookGridRow> lst = [];
             if (string.IsNullOrEmpty(textToSearch))
             {
                 lst = _originalRows;
@@ -4989,24 +4987,20 @@ namespace Krypton.Toolkit
                 if (SelectionMode == DataGridViewSelectionMode.FullRowSelect)
                 {
                     if (UseFormattedValueForSearch)
-                        lst = _originalRows.Where(p => p.Cells.Cast<DataGridViewCell>()
-                            .Any(q => q.FormattedValue.ToStringNull().ToUpper().Contains(searchText)))
-                            .ToList();
+                        lst = new HashSet<OutlookGridRow>(_originalRows.Where(p => p.Cells.Cast<DataGridViewCell>()
+                            .Any(q => q.FormattedValue.ToStringNull().ToUpper().Contains(searchText))));
                     else
-                        lst = _originalRows.Where(p => p.Cells.Cast<DataGridViewCell>()
-                            .Any(q => q.Value.ToStringNull().ToUpper().Contains(searchText)))
-                            .ToList();
+                        lst = new HashSet<OutlookGridRow>(_originalRows.Where(p => p.Cells.Cast<DataGridViewCell>()
+                            .Any(q => q.Value.ToStringNull().ToUpper().Contains(searchText))));
                 }
                 else
                 {
                     if (currentCellIndex >= 0)
                     {
                         if (UseFormattedValueForSearch)
-                            lst = _originalRows.Where(p => p.Cells[currentCellIndex].FormattedValue.ToStringNull().ToUpper().Contains(searchText))
-                                .ToList();
+                            lst = new HashSet<OutlookGridRow>(_originalRows.Where(p => p.Cells[currentCellIndex].FormattedValue.ToStringNull().ToUpper().Contains(searchText)));
                         else
-                            lst = _originalRows.Where(p => p.Cells[currentCellIndex].Value.ToStringNull().ToUpper().Contains(searchText))
-                                .ToList();
+                            lst = new HashSet<OutlookGridRow>(_originalRows.Where(p => p.Cells[currentCellIndex].Value.ToStringNull().ToUpper().Contains(searchText)));
                     }
                     else
                     {
@@ -5018,7 +5012,7 @@ namespace Krypton.Toolkit
             {
                 return textToSearch.Substring(0, textToSearch.Length - 1);
             }
-            _internalRows = lst;
+            _internalRows = lst.ToList();
             Fill();
             return textToSearch;
         }
@@ -5046,39 +5040,92 @@ namespace Krypton.Toolkit
         /// </remarks>
         private string SearchInDataTable(string textToSearch, System.Data.DataTable dt)
         {
-            var grid = this;
+            var grid = this; // Assuming 'this' refers to your DataGridView or a class that contains it
+            object? gridActualDataSource = grid.DataSource;
+            // Try to get the BindingSource if the grid is bound to one.
+            // We'll prioritize using the BindingSource.Filter if available.
+            BindingSource? bindingSource = gridActualDataSource as BindingSource;
             try
             {
-
                 var dv = dt.DefaultView;
-                if (string.IsNullOrEmpty(textToSearch))
+                if (string.IsNullOrWhiteSpace(textToSearch)) // Use IsNullOrWhiteSpace for better handling of empty/whitespace strings
                 {
                     dv.RowFilter = string.Empty;
                     return string.Empty;
                 }
 
                 var filterBuilder = new StringBuilder();
+                string escapedTextToSearch = textToSearch.Replace("'", "''"); // Escape single quotes for SQL-like strings
 
                 for (int i = 0; i < grid.ColumnCount; i++)
                 {
-                    if (!grid.Columns[i].Visible) continue;
+                    // Ensure the column is visible and data property name corresponds to a DataTable column
+                    if (!grid.Columns[i].Visible)
+                        continue;
 
-                    string columnName = grid.Columns[i].Name;
-                    if (grid.Columns[i].ValueType == typeof(string))
-                        AppendFilter(filterBuilder, $"{columnName} LIKE '%{textToSearch}%'");
-                    else if (grid.Columns[i].ValueType.IsNumeric() && textToSearch.IsNumeric())
+                    string columnName = grid.Columns[i].DataPropertyName;
+                    if (string.IsNullOrEmpty(columnName))
+                        columnName = grid.Columns[i].Name;
+
+                    if (string.IsNullOrEmpty(columnName) || !dt.Columns.Contains(columnName))
+                        continue;
+
+                    Type? columnType = dt.Columns[columnName]?.DataType;
+
+                    if (columnType == null) continue; // Column not found in DataTable
+
+                    if (columnType == typeof(string))
+                    {
+                        AppendFilter(filterBuilder, $"{columnName} LIKE '%{escapedTextToSearch}%'");
+                    }
+                    else if (columnType.IsNumeric() && textToSearch.IsNumeric())
+                    {
+                        AppendFilter(filterBuilder, $"{columnName} = {escapedTextToSearch}");
+                    }
+                    else if (columnType == typeof(DateTime) && textToSearch.IsDate())
+                    {
+                        // For DateTime, it's safer to use a try-parse and format it correctly
+                        AppendFilter(filterBuilder, $"{columnName} = #{textToSearch.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss")}#");
+                    }
+                    else if (columnType == typeof(bool) && (textToSearch.Equals("true", StringComparison.OrdinalIgnoreCase) || textToSearch.Equals("false", StringComparison.OrdinalIgnoreCase)))
+                    {
                         AppendFilter(filterBuilder, $"{columnName} = {textToSearch}");
-                    else if (grid.Columns[i].ValueType == typeof(DateTime) && textToSearch.IsDate())
-                        AppendFilter(filterBuilder, $"{columnName} = '{textToSearch}'");
+                    }
+                    else if (columnType == typeof(Guid) && Guid.TryParse(textToSearch, out _))
+                    {
+                        AppendFilter(filterBuilder, $"{columnName} = '{escapedTextToSearch}'");
+                    }
+                    else if (columnType == typeof(TimeSpan))
+                    {
+                        // For general text search on TimeSpan columns, converting to string and using LIKE is usually the best approach.
+                        AppendFilter(filterBuilder, $"CONVERT({columnName}, 'System.String') LIKE '%{escapedTextToSearch}%'");
+                    }
                 }
 
-                dv.RowFilter = filterBuilder.ToString();
+                if (bindingSource != null) // If BindingSource is present, use its Filter property
+                {
+                    if (filterBuilder.Length > 0)
+                        bindingSource.Filter = filterBuilder.ToString();
+                    else
+                        bindingSource.Filter = string.Empty;
+                }
+                else
+                {
+                    if (filterBuilder.Length > 0)
+                        dv.RowFilter = filterBuilder.ToString();
+                    else
+                        dv.RowFilter = string.Empty;
+                }
 
                 return dv.Count > 0 ? textToSearch : SearchInDataTable(textToSearch.Substring(0, textToSearch.Length - 1), dt);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.WriteLine($"Error in SearchInGrid: {ex.Message}");
+                // If an error occurs, clear the filter to avoid a stuck state
+                if (bindingSource != null)
+                    bindingSource.Filter = string.Empty;
+                else
+                    dt?.DefaultView.RowFilter = string.Empty;
                 return string.Empty;
             }
         }
@@ -5191,7 +5238,10 @@ namespace Krypton.Toolkit
 
             using var stringFormat = ToStringFormat(e.CellStyle!.Alignment);
 
-            var font = e.CellStyle.Font!;
+            //var font = e.CellStyle.Font!;
+            Font font = this.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelNormalControl, PaletteState.Normal) ??
+                                 new Font(this.DefaultCellStyle.Font!, FontStyle.Bold);
+
             // Measure text dimensions
             var zeroWidthSize = g.MeasureString(zeroWidth, font, e.CellBounds.Width, stringFormat).Width;
             var totalValueWidth = g.MeasureString(formattedValue, font, e.CellBounds.Width, stringFormat).Width;
@@ -5201,9 +5251,10 @@ namespace Krypton.Toolkit
             // Calculate horizontal offset for alignment
             var xOffset = CalculateHorizontalOffset(e.CellStyle.Alignment, e.CellBounds.Width, totalValueWidth, zeroWidthSize, highlightedTextStartWidth);
 
+            var pad = e.CellStyle.Alignment == DataGridViewContentAlignment.MiddleLeft ? e.CellStyle.Padding.Left : 0;
             // Draw highlight rectangle
             var highlightRectangle = new RectangleF(
-                e.CellBounds.X + xOffset,
+                e.CellBounds.X + xOffset + pad,
                 e.CellBounds.Y + 3,
                 highlightedTextWidth,
                 e.CellBounds.Height - 7
@@ -5295,10 +5346,10 @@ namespace Krypton.Toolkit
         private KryptonOutlookGridSearchToolBar? _searchToolBar;
 
         /// <summary>
-        /// Gets the list of <see cref="FilterField"/> objects representing the current filter configuration.
+        /// Gets the list of <see cref="KryptonOutlookGridFilterField"/> objects representing the current filter configuration.
         /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public List<FilterField>? ToolBarFilters { get; set; } = null;
+        public List<KryptonOutlookGridFilterField>? ToolBarFilters { get; set; } = null;
 
         /// <summary>
         /// Gets or sets the OutlookGridGroupBox
@@ -5319,7 +5370,6 @@ namespace Krypton.Toolkit
                         _searchToolBar.OnFilter -= SearchToolBar_OnFilter;
                         this.ColumnAdded -= KryptonOutlookGrid_ColumnAddedOrRemoved;
                         this.ColumnRemoved -= KryptonOutlookGrid_ColumnAddedOrRemoved;
-                        this.ColumnStateChanged -= KryptonOutlookGrid_ColumnStateChanged;
                     }
                     _searchToolBar = value;
                     if (_searchToolBar != null)
@@ -5328,7 +5378,6 @@ namespace Krypton.Toolkit
                         _searchToolBar.OnFilter += SearchToolBar_OnFilter;
                         this.ColumnAdded += KryptonOutlookGrid_ColumnAddedOrRemoved;
                         this.ColumnRemoved += KryptonOutlookGrid_ColumnAddedOrRemoved;
-                        this.ColumnStateChanged += KryptonOutlookGrid_ColumnStateChanged;
                     }
                 }
             }
@@ -5336,10 +5385,10 @@ namespace Krypton.Toolkit
 
         private void SearchToolBar_OnFilter(object? sender, EventArgs e)
         {
-            Filter? filterBuilder = null;
+            KryptonOutlookGridFilter? filterBuilder = null;
             try
             {
-                var cols = this.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).Select(c => new SourceColumn(c.Name, c.HeaderText, c.ValueType?.Name ?? string.Empty)).ToList();
+                var cols = this.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).Select(c => new KryptonOutlookGridFilterSourceColumn(c.Name, c.HeaderText, c.ValueType?.Name ?? string.Empty, c.DefaultCellStyle.Format)).ToList();
                 filterBuilder = new(cols, ToolBarFilters)
                 {
                     Text = $"Filter"
@@ -5363,6 +5412,15 @@ namespace Krypton.Toolkit
             }
         }
 
+        /// <summary>
+        /// Raises the <see cref="E:System.Windows.Forms.Control.KeyDown"/> event.
+        /// </summary>
+        /// <param name="e">A <see cref="T:System.Windows.Forms.KeyEventArgs"/> that contains the event data.</param>
+        /// <remarks>
+        /// This method extends the base class functionality to provide a custom keyboard shortcut.
+        /// If the Control key and the 'F' key are pressed simultaneously,
+        /// it toggles the visibility of the internal search toolbar (`_searchToolBar`).
+        /// </remarks>
         protected override void OnKeyDown(KeyEventArgs e)
         {
             if (e.Control && e.KeyCode == Keys.F)
@@ -5373,15 +5431,19 @@ namespace Krypton.Toolkit
         /// <summary>
         /// Handles the <see cref="System.Windows.Forms.DataGridView.ColumnStateChanged"/> event for the KryptonOutlookGrid.
         /// </summary>
-        /// <param name="sender">The source of the event.</param>
         /// <param name="e">A <see cref="DataGridViewColumnStateChangedEventArgs"/> that contains the event data.</param>
         /// <remarks>
         /// This method ensures that the associated search toolbar (`_searchToolBar`) is updated with the latest column information
         /// whenever a column's state (e.g., visibility, sort mode) changes. This keeps the search toolbar synchronized with the grid's columns.
         /// </remarks>
-        private void KryptonOutlookGrid_ColumnStateChanged(object? sender, DataGridViewColumnStateChangedEventArgs e)
+        protected override void OnColumnStateChanged(DataGridViewColumnStateChangedEventArgs e)
         {
             _searchToolBar?.SetColumns(this.Columns);
+            if (e.StateChanged == DataGridViewElementStates.Visible)
+            {
+                _summaryGrid?.Columns[e.Column.Index].Visible = this.Columns[e.Column.Index].Visible;
+            }
+            base.OnColumnStateChanged(e);
         }
 
         /// <summary>
@@ -5620,12 +5682,12 @@ namespace Krypton.Toolkit
 
         #endregion Find ToolBar
 
-        #region Adjust DataGridView Columns Width
+        #region Adjust Columns Width
 
         /// <summary>
         /// Adjusts the width of the visible columns in the DataGridView to proportionally fit the control's client width.
         /// </summary>
-        /// <param name="forceToAdjust">
+        /// <param name="allowToDecrease">
         /// If <c>true</c>, the adjustment is forced, meaning columns will be resized to fill the available space
         /// even if their current combined width is already greater than the available width (allowing them to decrease).
         /// If <c>false</c> (default), columns will only be adjusted to increase their width if they are
@@ -5647,14 +5709,14 @@ namespace Krypton.Toolkit
         /// </para>
         /// <para>
         /// If the total visible width is less than the available space, columns are expanded proportionally.
-        /// If <paramref name="forceToAdjust"/> is <c>true</c>, and the total visible width is greater than the available space,
+        /// If <paramref name="allowToDecrease"/> is <c>true</c>, and the total visible width is greater than the available space,
         /// columns will be shrunk proportionally to fit.
         /// </para>
         /// <para>
         /// The method suppresses layout updates during the resizing process for better performance.
         /// </para>
         /// </remarks>
-        public void AutoResizeColumnsToFit(bool forceToAdjust = false, int additionalPadding = 0)
+        public void AutoResizeColumnsToFit(bool allowToDecrease = false, int additionalPadding = 0)
         {
             if (additionalPadding < 0) throw new ArgumentOutOfRangeException(nameof(additionalPadding), "Additional padding must be non-negative.");
 
@@ -5679,7 +5741,7 @@ namespace Krypton.Toolkit
 
             // Determine whether adjustment is required
             if (totalVisibleWidth > 0 &&
-               (totalVisibleWidth < availableWidth || forceToAdjust))
+               (totalVisibleWidth < availableWidth || allowToDecrease))
             {
                 float adjustmentRatio = (float)availableWidth / totalVisibleWidth;
                 this.SuspendLayout();
@@ -5692,7 +5754,7 @@ namespace Krypton.Toolkit
             }
         }
 
-        #endregion Adjust DataGridView Columns Width
+        #endregion Adjust Columns Width
 
 
         /*/// <summary>

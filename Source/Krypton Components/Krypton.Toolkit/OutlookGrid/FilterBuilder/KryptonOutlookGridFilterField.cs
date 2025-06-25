@@ -5,7 +5,7 @@
 /// It encapsulates details about the table, column, data type, operator, values,
 /// and grouping information for building dynamic queries or data visualizations.
 /// </summary>
-public class FilterField
+public class KryptonOutlookGridFilterField
 {
     /// <summary>
     /// Gets or sets the original column name in the database or data source.
@@ -59,14 +59,14 @@ public class FilterField
     public string Filter { get; set; } = default!;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="FilterField"/> class.
+    /// Initializes a new instance of the <see cref="KryptonOutlookGridFilterField"/> class.
     /// </summary>
-    public FilterField() { }
+    public KryptonOutlookGridFilterField() { }
 
     /// <summary>
     /// A list of sub-filter groups nested within this filter condition.
     /// </summary>
-    public List<FilterField> SubGroups { get; set; } = null!;
+    public List<KryptonOutlookGridFilterField> SubGroups { get; set; } = null!;
 
     /// <summary>
     /// Gets or sets information about the temp group this filter belongs to (e.g., Group "1" or SubGroup "1.1, 1.2, 1.1.1").
@@ -74,11 +74,11 @@ public class FilterField
     public bool IsGroupInfoTemp { get; set; } = false;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="FilterField"/> class with column details.
+    /// Initializes a new instance of the <see cref="KryptonOutlookGridFilterField"/> class with column details.
     /// </summary>
     /// <param name="columnName">The original name of the column.</param>
     /// <param name="dataType">The data type of the column.</param>
-    public FilterField(string columnName, string dataType)
+    public KryptonOutlookGridFilterField(string columnName, string dataType)
     {
         ColumnName = columnName;
         DataType = dataType;

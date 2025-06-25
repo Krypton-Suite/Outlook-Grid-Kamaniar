@@ -53,7 +53,7 @@ public class SourceTable
 /// <summary>
 /// Represents a column within a database table, including its name, an optional alias, and its data type.
 /// </summary>
-public class SourceColumn
+public class KryptonOutlookGridFilterSourceColumn
 {
     /// <summary>
     /// Gets or sets the original name of the column in the database table.
@@ -69,20 +69,27 @@ public class SourceColumn
     public string DataType { get; set; } = default!;
 
     /// <summary>
-    /// Initializes a new empty instance of the <see cref="SourceColumn"/> class.
+    /// Gets or sets the format of the column (e.g., "N2", "dd/MM/yyyy").
     /// </summary>
-    public SourceColumn() { }
+    public string Format { get; set; } = default!;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SourceColumn"/> class with a name, an alias, and a data type.
+    /// Initializes a new empty instance of the <see cref="KryptonOutlookGridFilterSourceColumn"/> class.
+    /// </summary>
+    public KryptonOutlookGridFilterSourceColumn() { }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="KryptonOutlookGridFilterSourceColumn"/> class with a name, an alias, a data type, and a format.
     /// </summary>
     /// <param name="name">The original name of the column.</param>
     /// <param name="alias">The alias for the column.</param>
     /// <param name="dataType">The data type of the column.</param>
-    public SourceColumn(string name, string alias, string dataType)
+    /// <param name="format">The format of the column.</param>
+    public KryptonOutlookGridFilterSourceColumn(string name, string alias, string dataType, string format)
     {
         Name = name;
         Alias = alias;
         DataType = dataType;
+        Format = format;
     }
 }

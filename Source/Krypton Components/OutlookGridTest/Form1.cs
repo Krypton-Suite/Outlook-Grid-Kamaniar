@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.Data;
+using System.Xml.Linq;
 
 using Krypton.Toolkit;
 
@@ -6,11 +8,71 @@ namespace OutlookGridTest
 {
     public partial class Form1 : Form
     {
-        List<object[]> _products;
+
+        private readonly Random _random = new(); // Ensure _random is initialized
+
+        // Define common data generation parameters
+        private const int NumberOfProductsToGenerate = 10000;//10000; // Easily change for all methods
+
+        private readonly string[] _categories = { "Electronics", "Furniture", "Books", "Apparel", "Home Goods", "Office Supplies", "Outdoor & Garden" };
+        private readonly string[] _namePrefixes = { "Super", "Mega", "Ultra", "Smart", "Eco", "Pro", "Elite", "Compact" };
+        private readonly string[] _nameSuffixes = { "X", "Plus", "Max", "Series", "Edition", "Go", "Connect", "Master" };
+        private readonly string[] _commonProductWords = { "Laptop", "Mouse", "Keyboard", "Chair", "Monitor", "Desk", "Book", "Shirt", "Lamp", "Pen", "Tablet", "Speaker", "Camera", "Headphones" };
+
+
         public Form1()
         {
             InitializeComponent();
             this.Load += Form1_Load;
+            kryptonExtraGrid1.OutlookGrid.OnGridColumnCreating += OutlookGrid_OnGridColumnCreating;
+            kryptonExtraGrid1.OutlookGrid.OnInternalColumnCreating += OutlookGrid_OnInternalColumnCreating;
+        }
+
+        private void OutlookGrid_OnInternalColumnCreating(object? sender, EventArgs e)
+        {
+            OutlookGridColumn column = (OutlookGridColumn)sender!;
+            if (column.Name == "StockQuantity")
+            {
+                column.AggregationFormatString = "{1} of {0}: {2}";
+                column.AggregationType = KryptonOutlookGridAggregationType.Sum;
+            }
+            else if (column.Name == "Category")
+            {
+                column.GroupIndex = 0;
+                column.SortIndex = 0;
+                column.SortDirection = SortOrder.Ascending;
+            }
+        }
+
+        private void OutlookGrid_OnGridColumnCreating(object? sender, EventArgs e)
+        {
+            DataGridViewColumn column = (DataGridViewColumn)sender!;
+            if (column.Name == "Rating")
+            {
+                column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            }
+            else if (column.ValueType.IsNumeric())
+            {
+                // Apply specific formatting for numeric columns
+                column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                column.Width = 100;
+                if (column.ValueType.IsDouble())
+                {
+                    column.DefaultCellStyle.Format = "N2";
+                }
+            }
+            else if (column.ValueType == typeof(DateTime))
+            {
+                // Apply specific formatting for DateTime columns
+                column.DefaultCellStyle.Format = "dd/MM/yyyy";
+                column.Width = 125;
+            }
+            else
+            {
+                column.Width = 250;
+            }
         }
 
         private void Form1_Load(object? sender, EventArgs e)
@@ -18,6 +80,62 @@ namespace OutlookGridTest
             outlookGrid1.FillMode = GridFillMode.GroupsAndNodes;
             //FillWithCurrentMethod();
             SetButtonText();
+            SetTestData();
+        }
+
+        private BindingSource bsData = new();
+        private DataTable _dataTable = null!;
+        private DataSet _dataSet = null!;
+        private void SetTestData()
+        {
+            _dataTable = new DataTable();
+            _dataSet = new DataSet();
+            bsData.DataSource = _dataSet;
+            _dataTable = _dataSet.Tables.Add("TableTest");
+            _dataTable.Columns.Add("int", typeof(int));
+            _dataTable.Columns.Add("decimal", typeof(decimal));
+            _dataTable.Columns.Add("double", typeof(double));
+            _dataTable.Columns.Add("date", typeof(DateTime));
+            _dataTable.Columns.Add("datetime", typeof(DateTime));
+            _dataTable.Columns.Add("string", typeof(string));
+            _dataTable.Columns.Add("boolean", typeof(bool));
+            _dataTable.Columns.Add("guid", typeof(Guid));
+            //_dataTable.Columns.Add("image", typeof(Bitmap));
+            _dataTable.Columns.Add("timespan", typeof(TimeSpan));
+
+            bsData.DataSource = _dataSet;
+            bsData.DataMember = _dataTable.TableName;
+
+            kryptonExtraGrid1.OutlookGrid.DataSource = bsData;
+            AddTestData();
+        }
+
+        private void AddTestData()
+        {
+            Random r = new Random();
+            /*Image[] sampleimages = new Image[2];
+            sampleimages[0] = Image.FromFile(Path.Combine(Application.StartupPath, "flag-green_24.png"));
+            sampleimages[1] = Image.FromFile(Path.Combine(Application.StartupPath, "flag-red_24.png"));*/
+
+            int maxMinutes = (int)((TimeSpan.FromHours(20) - TimeSpan.FromHours(10)).TotalMinutes);
+            for (int i = 0; i < 1000; i++)
+            {
+                object[] newrow = new object[] {
+                    i,
+                    Math.Round((decimal)i*2/3, 6),
+                    Math.Round(i % 2 == 0 ? (double)i*2/3 : (double)i/2, 6),
+                    DateTime.Today.AddHours(i*2).AddHours(i%2 == 0 ?i*10+1:0).AddMinutes(i%2 == 0 ?i*10+1:0).AddSeconds(i%2 == 0 ?i*10+1:0).AddMilliseconds(i%2 == 0 ?i*10+1:0).Date,
+                    DateTime.Today.AddHours(i*2).AddHours(i%2 == 0 ?i*10+1:0).AddMinutes(i%2 == 0 ?i*10+1:0).AddSeconds(i%2 == 0 ?i*10+1:0).AddMilliseconds(i%2 == 0 ?i*10+1:0),
+                    i*2 % 3 == 0 ? null! : $"{i} str",
+                    i % 2 == 0 ? true:false,
+                    Guid.NewGuid(),
+                    //null,
+                    //sampleimages[r.Next(0, 2)],
+                    TimeSpan.FromHours(10).Add(TimeSpan.FromMinutes(r.Next(maxMinutes)))
+                };
+
+                _dataTable.Rows.Add(newrow);
+            }
         }
 
         private void FillWithCurrentMethod()
@@ -34,9 +152,9 @@ namespace OutlookGridTest
             outlookGrid1.CreateOutlookGridColumn("Id", "Id", 100, dispIndex++, false);
             outlookGrid1.CreateOutlookGridColumn("Name", "Name", 100, dispIndex++, true);
             outlookGrid1.CreateOutlookGridColumn("Cat", "Cat", 125, dispIndex++, true, false, SortOrder.Ascending, 0);
-            outlookGrid1.CreateOutlookGridColumn("Price", "Price", 125, dispIndex++, true, false, SortOrder.None, -1, DataGridViewContentAlignment.MiddleRight, 2, AggregationType.Sum, "double");
-            outlookGrid1.CreateOutlookGridColumn("Quantity", "Quantity", 125, dispIndex++, true, false, SortOrder.None, -1, DataGridViewContentAlignment.MiddleRight, 2, AggregationType.Sum, "double");
-            outlookGrid1.CreateOutlookGridColumn("OrdDate", "OrdDate", 125, dispIndex++, true, false, SortOrder.None, -1, DataGridViewContentAlignment.MiddleLeft, -1, AggregationType.None, "datetime");
+            outlookGrid1.CreateOutlookGridColumn("Price", "Price", 125, dispIndex++, true, false, SortOrder.None, -1, DataGridViewContentAlignment.MiddleRight, 2, KryptonOutlookGridAggregationType.Sum, "double");
+            outlookGrid1.CreateOutlookGridColumn("Quantity", "Quantity", 125, dispIndex++, true, false, SortOrder.None, -1, DataGridViewContentAlignment.MiddleRight, 2, KryptonOutlookGridAggregationType.Sum, "double");
+            outlookGrid1.CreateOutlookGridColumn("OrdDate", "OrdDate", 125, dispIndex++, true, false, SortOrder.None, -1, DataGridViewContentAlignment.MiddleLeft, -1, KryptonOutlookGridAggregationType.None, "datetime");
             /*outlookGrid1.Columns["Price"].ValueType = typeof(double);
             outlookGrid1.Columns["Quantity"].ValueType = typeof(double);
             outlookGrid1.Columns["OrdDate"].ValueType = typeof(DateTime);*/
@@ -158,6 +276,16 @@ namespace OutlookGridTest
                 BtnSelectionMode.Text = "Full Row Select";
             }
 
+            kryptonExtraGrid1.OutlookGrid.FillMode = outlookGrid1.FillMode;
+            kryptonExtraGrid1.OutlookGrid.ShowSubTotal = outlookGrid1.ShowSubTotal;
+            kryptonExtraGrid1.OutlookGrid.ShowGrandTotal = outlookGrid1.ShowGrandTotal;
+            kryptonExtraGrid1.OutlookGrid.ShowColumnFilter = outlookGrid1.ShowColumnFilter;
+            kryptonExtraGrid1.OutlookGrid.EnableSearchOnKeyPress = outlookGrid1.EnableSearchOnKeyPress;
+            kryptonExtraGrid1.OutlookGrid.HighlightSearchText = outlookGrid1.HighlightSearchText;
+            kryptonExtraGrid1.OutlookGrid.SelectionMode = outlookGrid1.SelectionMode;
+            kryptonExtraGrid1.OutlookGrid.ReadOnly = outlookGrid1.ReadOnly;
+
+
             /*var intCol = outlookGrid1.FindFromColumnName("Id")!;
             if (intCol.AvailableInContextMenu)
                 BtnShowIdInColumnContext.Text = "Hide Id In Col Context";
@@ -170,6 +298,84 @@ namespace OutlookGridTest
         private void BtnLoadDataTable_Click(object sender, EventArgs e)
         {
             LoadDataTableData();
+        }
+
+        private void BtnLoadListOfT_Click(object sender, EventArgs e)
+        {
+            LoadProductData();
+        }
+
+        private void BtnLoadListOfRawArray_Click(object sender, EventArgs e)
+        {
+            LoadRawArrayData();
+        }
+
+        private void BtnLoadDictionary_Click(object sender, EventArgs e)
+        {
+            LoadDictionaryData();
+        }
+
+        #region Get Data Methods
+
+        /// <summary>
+        /// Generates a list of synthetic product data.
+        /// </summary>
+        /// <param name="count">The number of products to generate.</param>
+        /// <returns>A list of <see cref="ProductDto"/> objects.</returns>
+        private List<ProductDto> GenerateProductData(int count)
+        {
+            List<ProductDto> products = new List<ProductDto>();
+
+            for (int i = 1; i <= count; i++)
+            {
+                string category = _categories[_random.Next(_categories.Length)];
+                string productName = $"{_namePrefixes[_random.Next(_namePrefixes.Length)]} {_commonProductWords[_random.Next(_commonProductWords.Length)]} {_nameSuffixes[_random.Next(_nameSuffixes.Length)]} {i}";
+
+                decimal price = Math.Round((decimal)(_random.NextDouble() * 500) + 10, 2); // Price between 10.00 and 510.00
+                int stockQuantity = _random.Next(1, 200); // Stock between 1 and 199
+
+                // Dates within the last year or so, including current date
+                DateTime lastUpdated = DateTime.Now.AddDays(-_random.Next(0, 365));
+                bool isAvailable = _random.Next(0, 100) < 95; // 95% chance of being available
+
+                double rating = Math.Round(_random.NextDouble() * 5.0, 1); // Rating between 0.0 and 5.0, one decimal place
+                if (rating < 1.0) rating = 1.0; // Ensure a minimum rating of 1.0 for more realistic data
+
+                Image? productImage = null; // Keep null for large data sets unless actual image data is needed for testing
+
+                products.Add(new ProductDto(
+                    i,
+                    productName,
+                    category,
+                    price,
+                    stockQuantity,
+                    lastUpdated,
+                    isAvailable,
+                    rating,
+                    productImage
+                ));
+            }
+            return products;
+        }
+
+        private void LoadProductData()
+        {
+            List<ProductDto> products = GenerateProductData(NumberOfProductsToGenerate);
+
+            // Example of setting data for your grid
+            outlookGrid1.SetDataSource(products);
+            outlookGrid1.AutoResizeColumnsToFit();
+
+            kryptonExtraGrid1.OutlookGrid.SetDataSource(products);
+            kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
+
+            // Apply formatting after setting data source
+            if (outlookGrid1.Columns.Contains("Price"))
+            {
+                outlookGrid1.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns["Price"].DefaultCellStyle.Format = "N2";
+            }
         }
 
         private void LoadDataTableData()
@@ -186,186 +392,124 @@ namespace OutlookGridTest
             productsTable.Columns.Add("LastRestockDate", typeof(DateTime));
             productsTable.Columns.Add("IsAvailable", typeof(bool));
             productsTable.Columns.Add("Rating", typeof(double));
-            // You could add an Image column if needed, e.g.:
-            // productsTable.Columns.Add("Thumbnail", typeof(Image));
+            // productsTable.Columns.Add("ProductImage", typeof(Image)); // Add if you intend to use images
 
-            // 3. Add rows to the DataTable
-            productsTable.Rows.Add(1, "Laptop Pro X", "Electronics", 1200.50m, 5, new DateTime(2025, 5, 10), true, 4.7);
-            productsTable.Rows.Add(2, "Wireless Mouse", "Electronics", 25.99m, 20, new DateTime(2025, 5, 15), true, 4.2);
-            productsTable.Rows.Add(3, "Mechanical Keyboard", "Electronics", 75.00m, 12, new DateTime(2025, 5, 20), false, 4.5);
-            productsTable.Rows.Add(5, "27-inch Monitor", "Electronics", 300.00m, 7, new DateTime(2025, 6, 1), true, 4.8);
-            productsTable.Rows.Add(4, "Ergonomic Desk Chair", "Furniture", 150.00m, 8, new DateTime(2025, 5, 12), true, 3.9);
-            productsTable.Rows.Add(6, "Hardcover Bookcase", "Furniture", 90.00m, 10, new DateTime(2025, 6, 5), true, 4.1);
-            productsTable.Rows.Add(7, "USB-C Hub", "Accessories", 45.00m, 30, new DateTime(2025, 5, 25), true, 4.0);
-            // Example of a row with a null value for Rating
-            productsTable.Rows.Add(8, "HD Webcam", "Electronics", 50.00m, 15, new DateTime(2025, 6, 2), false, DBNull.Value);
-            productsTable.Rows.Add(9, "Modern Coffee Table", "Furniture", 70.00m, 6, new DateTime(2025, 5, 28), true, 4.6);
-            productsTable.Rows.Add(10, "Noise-Cancelling Headphones", "Electronics", 100.00m, 18, new DateTime(2025, 6, 3), true, 4.9);
+            // Get generated product data
+            List<ProductDto> products = GenerateProductData(NumberOfProductsToGenerate);
 
-            outlookGrid1.DataSource = productsTable;
-            //outlookGrid1.SetDataSource(productsTable);
-        }
-
-        private void BtnLoadListOfT_Click(object sender, EventArgs e)
-        {
-            LoadProductData();
-        }
-
-        private Random _random = new Random();
-
-        private void LoadProductData()
-        {
-            List<ProductDto> products = new List<ProductDto>();
-            int numberOfProductsToGenerate = 10000; // You can change this to 100,000 or more
-
-            // Define possible categories and product prefixes/suffixes for more variety
-            string[] categories = { "Electronics", "Furniture", "Books", "Apparel", "Home Goods", "Office Supplies", "Outdoor & Garden" };
-            string[] namePrefixes = { "Super", "Mega", "Ultra", "Smart", "Eco", "Pro", "Elite", "Compact" };
-            string[] nameSuffixes = { "X", "Plus", "Max", "Series", "Edition", "Go", "Connect", "Master" };
-            string[] commonProductWords = { "Laptop", "Mouse", "Keyboard", "Chair", "Monitor", "Desk", "Book", "Shirt", "Lamp", "Pen", "Tablet", "Speaker", "Camera", "Headphones" };
-
-
-            for (int i = 1; i <= numberOfProductsToGenerate; i++)
+            // 3. Add rows to the DataTable from the generated data
+            foreach (var product in products)
             {
-                string category = categories[_random.Next(categories.Length)];
-                string productName = $"{namePrefixes[_random.Next(namePrefixes.Length)]} {commonProductWords[_random.Next(commonProductWords.Length)]} {nameSuffixes[_random.Next(nameSuffixes.Length)]} {i}";
-
-                decimal price = Math.Round((decimal)(_random.NextDouble() * 500) + 10, 2); // Price between 10.00 and 510.00
-                int stockQuantity = _random.Next(1, 200); // Stock between 1 and 199
-
-                // Dates within the last year or so, including current date
-                DateTime lastUpdated = DateTime.Now.AddDays(-_random.Next(0, 365));
-                bool isAvailable = _random.Next(0, 100) < 95; // 95% chance of being available
-
-                double rating = Math.Round(_random.NextDouble() * 5.0, 1); // Rating between 0.0 and 5.0, one decimal place
-                if (rating < 1.0) rating = 1.0; // Ensure a minimum rating of 1.0 for more realistic data
-
-                // For the Image property:
-                // For large data, setting actual image bytes for thousands of products can consume a lot of memory.
-                // It's often better to leave it null or use a small placeholder/dummy byte array for testing unless
-                // your test specifically involves loading/displaying these images.
-                Image? productImage = null; // Most practical for large data
-                                            // If you need *some* image data, you could use a tiny, fixed placeholder:
-                                            // productImage = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82 }; // A tiny 1x1 black PNG
-
-                products.Add(new ProductDto(
-                    i,
-                    productName,
-                    category,
-                    price,
-                    stockQuantity,
-                    lastUpdated,
-                    isAvailable,
-                    rating,
-                    productImage
-                ));
+                productsTable.Rows.Add(
+                    product.Id,
+                    product.Name,
+                    product.Category,
+                    product.Price,
+                    product.StockQuantity,
+                    product.LastRestockDate,
+                    product.IsAvailable,
+                    product.Rating
+                // Add product.ProductImage if you have an Image column
+                );
             }
 
-            // Example of setting data for your grid
-            outlookGrid1.SetDataSource(products);
+            outlookGrid1.DataSource = productsTable;
             outlookGrid1.AutoResizeColumnsToFit();
-            kryptonExtraGrid1.OutlookGrid.SetDataSource(products);
-            outlookGrid1.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
-            outlookGrid1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-            outlookGrid1.Columns["Price"].DefaultCellStyle.Format = "N2";
-            Console.WriteLine($"Generated and loaded {products.Count} products.");
-        }
 
-        private void BtnLoadListOfRawArray_Click(object sender, EventArgs e)
-        {
-            LoadRawArrayData();
+            kryptonExtraGrid1.OutlookGrid.SetDataSource(productsTable);
+            kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
+
+            // Apply formatting for the Price column
+            if (outlookGrid1.Columns.Contains("Price"))
+            {
+                outlookGrid1.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns["Price"].DefaultCellStyle.Format = "N2";
+            }
         }
 
         private void LoadRawArrayData()
         {
-            List<object[]> rawData = new List<object[]>
+            List<object[]> rawData = new List<object[]>();
+
+            // Get generated product data
+            List<ProductDto> products = GenerateProductData(NumberOfProductsToGenerate);
+
+            // Convert ProductDto objects to object arrays
+            foreach (var product in products)
             {
-                new object[] { 1, "Laptop Pro X", "Electronics", 1200.50m, 5, new DateTime(2025, 5, 10), true, 4.7 },
-                new object[] { 2, "Wireless Mouse", "Electronics", 25.99m, 20, new DateTime(2025, 5, 15), true, 4.2 },
-                new object[] { 3, "Mechanical Keyboard", "Electronics", 75.00m, 12, new DateTime(2025, 5, 20), false, 4.5 },
-                new object[] { 4, "Ergonomic Desk Chair", "Furniture", 150.00m, 8, new DateTime(2025, 5, 12), true, 3.9 },
-                new object[] { 5, "27-inch Monitor", "Electronics", 300.00m, 7, new DateTime(2025, 6, 1), true, 4.8 },
-                new object[] { 6, "Hardcover Bookcase", "Furniture", 90.00m, 10, new DateTime(2025, 6, 5), true, 4.1 },
-                new object[] { 7, "USB-C Hub", "Accessories", 45.00m, 30, new DateTime(2025, 5, 25), true, 4.0 },
-                new object[] { 8, "HD Webcam", "Electronics", 50.00m, 15, new DateTime(2025, 6, 2), false, 3.5 },
-                new object[] { 9, "Modern Coffee Table", "Furniture", 70.00m, 6, new DateTime(2025, 5, 28), true, 4.6 },
-                new object[] { 10, "Noise-Cancelling Headphones", "Electronics", 100.00m, 18, new DateTime(2025, 6, 3), true, 4.9 }
-            };
+                rawData.Add(new object[]
+                {
+                product.Id,
+                product.Name,
+                product.Category,
+                product.Price,
+                product.StockQuantity,
+                product.LastRestockDate,
+                product.IsAvailable,
+                product.Rating,
+                    // product.ProductImage // Include if you want to pass images to raw array
+                });
+            }
 
             outlookGrid1.SetDataSource(rawData);
-        }
+            outlookGrid1.AutoResizeColumnsToFit();
 
-        private void BtnLoadDictionary_Click(object sender, EventArgs e)
-        {
-            LoadDictionaryData();
+            kryptonExtraGrid1.OutlookGrid.SetDataSource(rawData);
+            kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
+            // Apply formatting for the Price column (assuming column index or name)
+            // If your grid auto-generates columns from raw array, column names might not be available directly.
+            // You might need to rely on column index or inspect the generated columns.
+            // Assuming "Price" will be at index 3 based on your array structure:
+            if (outlookGrid1.Columns.Count > 3) // Check if column exists
+            {
+                outlookGrid1.Columns[3].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns[3].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns[3].DefaultCellStyle.Format = "N2";
+            }
+            Console.WriteLine($"Generated and loaded {rawData.Count} products for raw object array.");
         }
 
         private void LoadDictionaryData()
         {
-            List<Dictionary<string, object>> dictionaryData = new List<Dictionary<string, object>>
-            {
-                new Dictionary<string, object>
-                {
-                    { "Id", 1 },
-                    { "ProductName", "Laptop Pro X" },
-                    { "ProductCategory", "Electronics" },
-                    { "UnitPrice", 1200.50m },
-                    { "QtyInStock", 5 },
-                    { "RestockDate", new DateTime(2025, 5, 10) },
-                    { "Available", true },
-                    { "CustomerRating", 4.7 }
-                },
-                new Dictionary<string, object>
-                {
-                    { "Id", 2 },
-                    { "ProductName", "Wireless Mouse" },
-                    { "ProductCategory", "Electronics" },
-                    { "UnitPrice", 25.99m },
-                    { "QtyInStock", 20 },
-                    { "RestockDate", new DateTime(2025, 5, 15) },
-                    { "Available", true },
-                    { "CustomerRating", 4.2 }
-                },
-                new Dictionary<string, object>
-                {
-                    { "Id", 3 },
-                    { "ProductName", "Mechanical Keyboard" },
-                    { "ProductCategory", "Electronics" },
-                    { "UnitPrice", 75.00m },
-                    { "QtyInStock", 12 },
-                    { "RestockDate", new DateTime(2025, 5, 20) },
-                    { "Available", false },
-                    { "CustomerRating", 4.5 }
-                },
-                // Example of a row with a missing key (for "Available" and "CustomerRating")
-                // The method will use DBNull.Value for these cells.
-                new Dictionary<string, object>
-                {
-                    { "Id", 11 },
-                    { "ProductName", "Smart Watch" },
-                    { "ProductCategory", "Wearables" },
-                    { "UnitPrice", 199.99m },
-                    { "QtyInStock", 8 },
-                    { "RestockDate", new DateTime(2025, 6, 10) }
-                },
-                // Example of a row with an extra key that won't have a column if not auto-generated
-                new Dictionary<string, object>
-                {
-                    { "Id", 12 },
-                    { "ProductName", "VR Headset" },
-                    { "ProductCategory", "Gaming" },
-                    { "UnitPrice", 599.00m },
-                    { "QtyInStock", 3 },
-                    { "RestockDate", new DateTime(2025, 6, 15) },
-                    { "Available", true },
-                    { "CustomerRating", 4.9 },
-                    { "WarrantyYears", 2 } // This key won't create a column unless explicitly handled
-                }
-            };
+            List<Dictionary<string, object>> dictionaryData = new List<Dictionary<string, object>>();
 
-            // Example of setting data for your grid
+            // Get generated product data
+            List<ProductDto> products = GenerateProductData(NumberOfProductsToGenerate);
+
+            // Convert ProductDto objects to Dictionaries
+            foreach (var product in products)
+            {
+                dictionaryData.Add(new Dictionary<string, object>
+            {
+                { "Id", product.Id },
+                { "ProductName", product.Name }, // Use consistent key names as desired by your grid
+                { "ProductCategory", product.Category },
+                { "UnitPrice", product.Price },
+                { "QtyInStock", product.StockQuantity },
+                { "RestockDate", product.LastRestockDate },
+                { "Available", product.IsAvailable },
+                { "CustomerRating", product.Rating }
+                // { "ProductImage", product.ProductImage } // Include if you want to pass images to dictionary
+            });
+            }
+
             outlookGrid1.SetDataSource(dictionaryData);
+            outlookGrid1.AutoResizeColumnsToFit();
+
+            kryptonExtraGrid1.OutlookGrid.SetDataSource(dictionaryData);
+            kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
+
+            // Apply formatting for the Price column
+            if (outlookGrid1.Columns.Contains("UnitPrice")) // Use the key name from your dictionary
+            {
+                outlookGrid1.Columns["UnitPrice"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns["UnitPrice"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns["UnitPrice"].DefaultCellStyle.Format = "N2";
+            }
         }
+
+        #endregion Get Data Methods
 
     }
 
@@ -373,7 +517,7 @@ namespace OutlookGridTest
     {
         public static void CreateOutlookGridColumn(this KryptonOutlookGrid grid, string columnName, string displayName, int width, int displayIndex, bool visible = true,
             bool showTotal = false, SortOrder sortOrder = SortOrder.None, int groupIndex = -1, DataGridViewContentAlignment alignment = DataGridViewContentAlignment.MiddleLeft,
-            int decimalPlace = -1, AggregationType aggregationType = AggregationType.None, string dataType = "string")
+            int decimalPlace = -1, KryptonOutlookGridAggregationType aggregationType = KryptonOutlookGridAggregationType.None, string dataType = "string")
         {
             try
             {
@@ -441,6 +585,85 @@ namespace OutlookGridTest
             string text = "N" + ((decimalPlace >= 0) ? decimalPlace.ToString() : 2);
             dtColumn.DefaultCellStyle.Format = text;
         }
+
+        /// <summary>
+        /// A HashSet containing all the non-nullable integer types in .NET.
+        /// </summary>
+        private static readonly HashSet<Type> numericTypes = new()
+    {
+        typeof(sbyte), typeof(byte), typeof(short), typeof(ushort),
+        typeof(int), typeof(uint), typeof(long), typeof(ulong),
+        typeof(Int16), typeof(UInt16), typeof(Int32), typeof(UInt32),
+        typeof(Int64), typeof(UInt64),
+        typeof(double), typeof(float), typeof(decimal)
+    };
+
+        /// <summary>
+        /// Determines whether the specified <see cref="DataGridViewColumn"/> contains numeric data.
+        /// This method checks the column's <see cref="DataGridViewColumn.ValueType"/> to see if it
+        /// is one of the common numeric types (byte, sbyte, short, ushort, int, uint, long, ulong, float, double, decimal).
+        /// </summary>
+        /// <param name="column">The <see cref="DataGridViewColumn"/> to check.</param>
+        /// <returns>
+        /// <c>true</c> if the column's <see cref="DataGridViewColumn.ValueType"/> is a numeric type;
+        /// otherwise, <c>false</c>.
+        /// </returns>
+        public static bool IsNumericColumn(this DataGridViewColumn? column)
+        {
+            if (column == null || column.ValueType == null) return false;
+            Type nonNullableType = Nullable.GetUnderlyingType(column.ValueType) ?? column.ValueType;
+            return numericTypes.Contains(nonNullableType);
+        }
+
+        /// <summary>
+        /// Checks if a given <see cref="Type"/> represents an numeric type. This method
+        /// considers both nullable (e.g., <c>int?</c>) and non-nullable (e.g., <c>int</c>)
+        /// integer types.
+        /// </summary>
+        /// <param name="type">The <see cref="Type"/> to check.</param>
+        /// <returns><c>true</c> if the <paramref name="type"/> is an numeric type (or a nullable numeric type); otherwise, <c>false</c>.</returns>
+        public static bool IsNumeric(this Type? type) =>
+            type is not null && numericTypes.Contains(Nullable.GetUnderlyingType(type) ?? type);
+
+        /// <summary>
+        /// A HashSet containing all the non-nullable integer types in .NET.
+        /// </summary>
+        private static readonly HashSet<Type> IntegerTypes = new()
+    {
+        typeof(sbyte), typeof(byte), typeof(short), typeof(ushort),
+        typeof(int), typeof(uint), typeof(long), typeof(ulong),
+        typeof(Int16), typeof(UInt16), typeof(Int32), typeof(UInt32),
+        typeof(Int64), typeof(UInt64)
+    };
+
+        /// <summary>
+        /// A HashSet containing all the non-nullable floating-point number types in .NET.
+        /// </summary>
+        private static readonly HashSet<Type> FloatingPointTypes = new()
+    {
+        typeof(double), typeof(float), typeof(decimal)
+    };
+
+        /// <summary>
+        /// Checks if a given <see cref="Type"/> represents an integer type. This method
+        /// considers both nullable (e.g., <c>int?</c>) and non-nullable (e.g., <c>int</c>)
+        /// integer types.
+        /// </summary>
+        /// <param name="type">The <see cref="Type"/> to check.</param>
+        /// <returns><c>true</c> if the <paramref name="type"/> is an integer type (or a nullable integer type); otherwise, <c>false</c>.</returns>
+        public static bool IsInteger(this Type? type) =>
+            type is not null && IntegerTypes.Contains(Nullable.GetUnderlyingType(type) ?? type);
+
+        /// <summary>
+        /// Checks if a given <see cref="Type"/> represents a floating-point number type.
+        /// This method considers both nullable (e.g., <c>double?</c>) and non-nullable
+        /// (e.g., <c>double</c>, <c>float</c>, <c>decimal</c>) floating-point types.
+        /// </summary>
+        /// <param name="type">The <see cref="Type"/> to check.</param>
+        /// <returns><c>true</c> if the <paramref name="type"/> is a floating-point number type (or a nullable floating-point type); otherwise, <c>false</c>.</returns>
+        public static bool IsDouble(this Type? type) =>
+            type is not null && FloatingPointTypes.Contains(Nullable.GetUnderlyingType(type) ?? type);
+
     }
 
     public class ProductDto

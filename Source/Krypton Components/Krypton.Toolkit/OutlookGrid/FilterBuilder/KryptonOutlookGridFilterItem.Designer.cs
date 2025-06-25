@@ -1,6 +1,6 @@
 ﻿namespace Krypton.Toolkit
 {
-    partial class FilterItem
+    partial class KryptonOutlookGridFilterItem
     {
         /// <summary> 
         /// Required designer variable.
@@ -33,9 +33,8 @@
             this.TpMain = new System.Windows.Forms.TableLayoutPanel();
             this.ColumnsList = new Krypton.Toolkit.KryptonComboBox();
             this.OperatorsList = new Krypton.Toolkit.KryptonComboBox();
-            this.TxtValue1 = new Krypton.Toolkit.KryptonTextBox();
-            this.TxtValue2 = new Krypton.Toolkit.KryptonTextBox();
-            this.FilterMenu = new Krypton.Toolkit.FilterItemMenuButton();
+            this.FilterMenu = new Krypton.Toolkit.KryptonOutlookGridFilterItemMenuButton();
+            this.filterValues1 = new Krypton.Toolkit.KryptonOutlookGridFilterValues();
             ((System.ComponentModel.ISupportInitialize)(this.PnlMain)).BeginInit();
             this.PnlMain.SuspendLayout();
             this.TpMain.SuspendLayout();
@@ -52,7 +51,7 @@
             this.PnlMain.Location = new System.Drawing.Point(0, 0);
             this.PnlMain.Margin = new System.Windows.Forms.Padding(0);
             this.PnlMain.Name = "PnlMain";
-            this.PnlMain.Size = new System.Drawing.Size(612, 25);
+            this.PnlMain.Size = new System.Drawing.Size(791, 25);
             this.PnlMain.TabIndex = 0;
             // 
             // TpMain
@@ -60,24 +59,23 @@
             this.TpMain.AutoSize = true;
             this.TpMain.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.TpMain.BackColor = System.Drawing.Color.Transparent;
-            this.TpMain.ColumnCount = 5;
-            this.TpMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.TpMain.ColumnCount = 4;
             this.TpMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.TpMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.TpMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.TpMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.TpMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
+            this.TpMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.TpMain.Controls.Add(this.ColumnsList, 0, 0);
             this.TpMain.Controls.Add(this.OperatorsList, 1, 0);
-            this.TpMain.Controls.Add(this.TxtValue1, 2, 0);
-            this.TpMain.Controls.Add(this.TxtValue2, 3, 0);
-            this.TpMain.Controls.Add(this.FilterMenu, 4, 0);
+            this.TpMain.Controls.Add(this.FilterMenu, 3, 0);
+            this.TpMain.Controls.Add(this.filterValues1, 2, 0);
             this.TpMain.Location = new System.Drawing.Point(0, 0);
             this.TpMain.Margin = new System.Windows.Forms.Padding(0);
             this.TpMain.Name = "TpMain";
             this.TpMain.RowCount = 1;
             this.TpMain.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.TpMain.Size = new System.Drawing.Size(612, 25);
+            this.TpMain.Size = new System.Drawing.Size(791, 25);
             this.TpMain.TabIndex = 0;
             // 
             // ColumnsList
@@ -105,33 +103,9 @@
             this.OperatorsList.TabIndex = 0;
             this.OperatorsList.SelectedIndexChanged += new System.EventHandler(this.OperatorsList_SelectedIndexChanged);
             // 
-            // TxtValue1
-            // 
-            this.TxtValue1.CueHint.CueHintText = "Value 1";
-            this.TxtValue1.Location = new System.Drawing.Point(355, 1);
-            this.TxtValue1.Margin = new System.Windows.Forms.Padding(1);
-            this.TxtValue1.MaxLength = 255;
-            this.TxtValue1.Name = "TxtValue1";
-            this.TxtValue1.Size = new System.Drawing.Size(100, 23);
-            this.TxtValue1.StateCommon.Content.Padding = new System.Windows.Forms.Padding(2, 2, 2, 3);
-            this.TxtValue1.TabIndex = 1;
-            this.TxtValue1.TextChanged += new System.EventHandler(this.TxtValue1_TextChanged);
-            // 
-            // TxtValue2
-            // 
-            this.TxtValue2.CueHint.CueHintText = "Value 2";
-            this.TxtValue2.Location = new System.Drawing.Point(457, 1);
-            this.TxtValue2.Margin = new System.Windows.Forms.Padding(1);
-            this.TxtValue2.MaxLength = 255;
-            this.TxtValue2.Name = "TxtValue2";
-            this.TxtValue2.Size = new System.Drawing.Size(100, 23);
-            this.TxtValue2.StateCommon.Content.Padding = new System.Windows.Forms.Padding(2, 2, 2, 3);
-            this.TxtValue2.TabIndex = 1;
-            this.TxtValue2.TextChanged += new System.EventHandler(this.TxtValue2_TextChanged);
-            // 
             // FilterMenu
             // 
-            this.FilterMenu.Location = new System.Drawing.Point(561, 1);
+            this.FilterMenu.Location = new System.Drawing.Point(740, 1);
             this.FilterMenu.Margin = new System.Windows.Forms.Padding(3, 1, 1, 1);
             this.FilterMenu.Name = "FilterMenu";
             this.FilterMenu.Size = new System.Drawing.Size(50, 23);
@@ -139,6 +113,14 @@
             this.FilterMenu.TabIndex = 2;
             this.FilterMenu.Values.DropDownArrowColor = System.Drawing.Color.Empty;
             this.FilterMenu.Values.Text = "End";
+            // 
+            // filterValues1
+            // 
+            this.filterValues1.Location = new System.Drawing.Point(354, 0);
+            this.filterValues1.Margin = new System.Windows.Forms.Padding(0);
+            this.filterValues1.Name = "filterValues1";
+            this.filterValues1.Size = new System.Drawing.Size(383, 23);
+            this.filterValues1.TabIndex = 3;
             // 
             // FilterItem
             // 
@@ -149,12 +131,11 @@
             this.Controls.Add(this.PnlMain);
             this.Margin = new System.Windows.Forms.Padding(0);
             this.Name = "FilterItem";
-            this.Size = new System.Drawing.Size(612, 25);
+            this.Size = new System.Drawing.Size(791, 25);
             ((System.ComponentModel.ISupportInitialize)(this.PnlMain)).EndInit();
             this.PnlMain.ResumeLayout(false);
             this.PnlMain.PerformLayout();
             this.TpMain.ResumeLayout(false);
-            this.TpMain.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.ColumnsList)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.OperatorsList)).EndInit();
             this.ResumeLayout(false);
@@ -168,8 +149,7 @@
         private TableLayoutPanel TpMain;
         private KryptonComboBox ColumnsList;
         private KryptonComboBox OperatorsList;
-        private KryptonTextBox TxtValue1;
-        private KryptonTextBox TxtValue2;
-        private FilterItemMenuButton FilterMenu;
+        private KryptonOutlookGridFilterItemMenuButton FilterMenu;
+        private KryptonOutlookGridFilterValues filterValues1;
     }
 }

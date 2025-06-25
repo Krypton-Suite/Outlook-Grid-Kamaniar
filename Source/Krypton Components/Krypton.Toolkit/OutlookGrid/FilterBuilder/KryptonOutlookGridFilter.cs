@@ -8,19 +8,19 @@ namespace Krypton.Toolkit
     /// filtering criteria based on data columns from a source. It supports various
     /// filter operators and can dynamically generate filter options from a <see cref="DataGridView"/>.
     /// </summary>
-    public partial class Filter : KryptonForm
+    internal partial class KryptonOutlookGridFilter : KryptonForm
     {
         /// <summary>
         /// Occurs when the filter criteria have changed.
         /// </summary>
-        public event FilterChangedEventHandler? FilterChanged;
+        public event KryptonOutlookGridFilterFilterChangedEventHandler? FilterChanged;
 
         #region Private Valriables
 
         /// <summary>
         /// A list of source columns available for filtering.
         /// </summary>
-        private List<SourceColumn> _sourceColumns = [];
+        private List<KryptonOutlookGridFilterSourceColumn> _sourceColumns = [];
 
         /// <summary>
         /// The threshold for determining whether to use a dropdown for distinct values.
@@ -45,7 +45,7 @@ namespace Krypton.Toolkit
         /// <summary>
         /// Gets or sets the list of source columns available for filtering.
         /// </summary>
-        private List<SourceColumn> Columns
+        private List<KryptonOutlookGridFilterSourceColumn> Columns
         {
             get { return _sourceColumns; }
             set { _sourceColumns = value; }
@@ -94,15 +94,15 @@ namespace Krypton.Toolkit
         public string FilterString => FilterItemGroup1.Filter;
 
         /// <summary>
-        /// Gets the list of <see cref="FilterField"/> objects representing the current filter configuration.
+        /// Gets the list of <see cref="KryptonOutlookGridFilterField"/> objects representing the current filter configuration.
         /// </summary>
-        public List<FilterField> FilterData => FillData();
+        public List<KryptonOutlookGridFilterField> FilterData => FillData();
 
         /// <summary>
-        /// Fills and returns a list of <see cref="FilterField"/> objects from the current filter item group configuration.
+        /// Fills and returns a list of <see cref="KryptonOutlookGridFilterField"/> objects from the current filter item group configuration.
         /// </summary>
-        /// <returns>A list of <see cref="FilterField"/> objects.</returns>
-        public List<FilterField> FillData()
+        /// <returns>A list of <see cref="KryptonOutlookGridFilterField"/> objects.</returns>
+        public List<KryptonOutlookGridFilterField> FillData()
         {
             var data = FilterItemGroup1.FillData();
             return data;
@@ -126,7 +126,7 @@ namespace Krypton.Toolkit
         /// The generic constructor for use by the designer.
         /// Initializes the component and sets up a default filter item.
         /// </summary>
-        public Filter()
+        public KryptonOutlookGridFilter()
         {
             // This call is required by the Windows Form Designer.
             InitializeComponent();
@@ -134,14 +134,14 @@ namespace Krypton.Toolkit
             // Add any initialization after the InitializeComponent() call.
             FilterItemGroup1.Columns = Columns;
             FilterItemGroup1.FilterChanged += FilterItemGroup_FilterChanged;
-            FilterItemGroup1.AddFilterItem(new FilterItem(_sourceColumns));
+            FilterItemGroup1.AddFilterItem(new KryptonOutlookGridFilterItem(_sourceColumns));
         }
 
         /// <summary>
         /// Another constructor that allows you to build your own custom list of fields.
         /// </summary>
         /// <param name="columns">Sets the fields if the user desires to manually build the fields list.</param>
-        public Filter(List<SourceColumn> columns)
+        public KryptonOutlookGridFilter(List<KryptonOutlookGridFilterSourceColumn> columns)
         {
             // This call is required by the Windows Form Designer.
             InitializeComponent();
@@ -150,15 +150,15 @@ namespace Krypton.Toolkit
             this.Columns = columns;
             FilterItemGroup1.Columns = columns;
             FilterItemGroup1.FilterChanged += FilterItemGroup_FilterChanged;
-            FilterItemGroup1.AddFilterItem(new FilterItem(columns));
+            FilterItemGroup1.AddFilterItem(new KryptonOutlookGridFilterItem(columns));
         }
 
         /// <summary>
         /// Another constructor that allows you to build your own custom list of fields and pre-populate filter data.
         /// </summary>
         /// <param name="columns">Sets the fields if the user desires to manually build the fields list.</param>
-        /// <param name="fieldData">A list of <see cref="FilterField"/> objects to pre-fill the filter dialog.</param>
-        public Filter(List<SourceColumn> columns, List<FilterField>? fieldData)
+        /// <param name="fieldData">A list of <see cref="KryptonOutlookGridFilterField"/> objects to pre-fill the filter dialog.</param>
+        public KryptonOutlookGridFilter(List<KryptonOutlookGridFilterSourceColumn> columns, List<KryptonOutlookGridFilterField>? fieldData)
         {
             // This call is required by the Windows Form Designer.
             InitializeComponent();
@@ -178,7 +178,7 @@ namespace Krypton.Toolkit
         /// Sets the <see cref="DistinctDisplayLevel">Distinct Display Level</see>.
         /// </param>
         /// <param name="useDistinctDisplaylevel">Sets the <see cref="UseDistinctDisplayLevel">UseDistinctDisplayLevel</see> property.</param>
-        public Filter(DataGridView dataGridView, float distinctDisplayLevel, bool useDistinctDisplaylevel)
+        public KryptonOutlookGridFilter(DataGridView dataGridView, float distinctDisplayLevel, bool useDistinctDisplaylevel)
         {
             // This call is required by the windows form designer
             InitializeComponent();
@@ -191,7 +191,7 @@ namespace Krypton.Toolkit
             FilterItemGroup1.Columns = Columns;
             FilterItemGroup1.FilterChanged += FilterItemGroup_FilterChanged;
             //FilterItemGroup1.AddFilterItem(new FilterItem(FilterItem.FieldTypes.StringExpression, Fields));
-            FilterItemGroup1.AddFilterItem(new FilterItem(Columns));
+            FilterItemGroup1.AddFilterItem(new KryptonOutlookGridFilterItem(Columns));
         }
 
 
@@ -200,7 +200,7 @@ namespace Krypton.Toolkit
         /// Another constructor that allows you to build your own custom fields.
         /// </summary>
         /// <param name="column">the field if the user desires to manually build the field.</param>
-        public Filter(SourceColumn column)
+        public KryptonOutlookGridFilter(KryptonOutlookGridFilterSourceColumn column)
         {
             // This call is required by the Windows Form Designer.
             InitializeComponent();
@@ -209,15 +209,15 @@ namespace Krypton.Toolkit
             this.Columns = [column];
             FilterItemGroup1.Columns = [column];
             FilterItemGroup1.FilterChanged += FilterItemGroup_FilterChanged;
-            FilterItemGroup1.AddFilterItem(new FilterItem(this.Columns));
+            FilterItemGroup1.AddFilterItem(new KryptonOutlookGridFilterItem(this.Columns));
         }
 
         /// <summary>
         /// Another constructor that allows you to build your own custom list of fields and pre-populate filter data.
         /// </summary>
         /// <param name="column">the field if the user desires to manually build the field.</param>
-        /// <param name="fieldData">A list of <see cref="FilterField"/> objects to pre-fill the filter dialog.</param>
-        public Filter(SourceColumn column, List<FilterField>? fieldData)
+        /// <param name="fieldData">A list of <see cref="KryptonOutlookGridFilterField"/> objects to pre-fill the filter dialog.</param>
+        public KryptonOutlookGridFilter(KryptonOutlookGridFilterSourceColumn column, List<KryptonOutlookGridFilterField>? fieldData)
         {
             // This call is required by the Windows Form Designer.
             InitializeComponent();
@@ -234,22 +234,22 @@ namespace Krypton.Toolkit
         #region Public Functions
 
         /// <summary>
-        /// Generates a list of <see cref="SourceColumn"/> objects from a <see cref="DataGridView"/>.
+        /// Generates a list of <see cref="KryptonOutlookGridFilterSourceColumn"/> objects from a <see cref="DataGridView"/>.
         /// It inspects the columns of the underlying <see cref="DataTable"/> to create source column definitions.
         /// </summary>
         /// <param name="gridView">The <see cref="DataGridView"/> from which to generate the fields.</param>
-        /// <returns>A list of <see cref="SourceColumn"/> objects.</returns>
-        public List<SourceColumn> GenerateList(DataGridView gridView)
+        /// <returns>A list of <see cref="KryptonOutlookGridFilterSourceColumn"/> objects.</returns>
+        public List<KryptonOutlookGridFilterSourceColumn> GenerateList(DataGridView gridView)
         {
-            List<SourceColumn> fields = [];
+            List<KryptonOutlookGridFilterSourceColumn> fields = [];
             DataTable? table = SharedDataFunctions.GetSourceTable(this._DataGrid);
 
             if (table != null)
             {
-                //' Loop through all the columns in the dataview, and adds a field to the list
+                //' Loop through all the columns in the DataGridView, and adds a field to the list
                 foreach (DataGridViewColumn column in gridView.Columns)
                 {
-                    fields.Add(GenerateColumn(column.HeaderText, table.Columns[column.DataPropertyName]!, table));
+                    fields.Add(GenerateColumn(column.HeaderText, table.Columns[column.DataPropertyName]!, table, column.DefaultCellStyle.Format));
                 }
             }
 
@@ -314,22 +314,22 @@ namespace Krypton.Toolkit
         #region Private Methods
 
         /// <summary>
-        /// Populates the filter dialog with a list of pre-existing <see cref="FilterField"/> objects.
+        /// Populates the filter dialog with a list of pre-existing <see cref="KryptonOutlookGridFilterField"/> objects.
         /// It organizes fields into groups based on their <c>GroupInfo</c> property.
         /// </summary>
-        /// <param name="fields">The list of <see cref="FilterField"/> objects to load.</param>
-        private void FillFields(List<FilterField>? fields)
+        /// <param name="fields">The list of <see cref="KryptonOutlookGridFilterField"/> objects to load.</param>
+        private void FillFields(List<KryptonOutlookGridFilterField>? fields)
         {
             // Suspend layout to avoid UI refresh issues while adding filter items
             FilterItemGroup1.SuspendLayout();
 
             if (fields != null && fields.Count > 0)
             {
-                List<FilterItemGroup> groups = [FilterItemGroup1];
+                List<KryptonOutlookGridFilterItemGroup> groups = [FilterItemGroup1];
 
                 foreach (var field in fields)
                 {
-                    FilterItem item = new(_sourceColumns, field);
+                    KryptonOutlookGridFilterItem item = new(_sourceColumns, field);
                     if (string.IsNullOrEmpty(field.GroupInfo) || field.IsGroupInfoTemp)
                     {
                         FilterItemGroup1.AddFilterItem(item);
@@ -337,7 +337,7 @@ namespace Krypton.Toolkit
                     }
 
                     string currentGroupName = field.GroupInfo;
-                    FilterItemGroup? group = FindParentGroup(groups, currentGroupName);
+                    KryptonOutlookGridFilterItemGroup? group = FindParentGroup(groups, currentGroupName);
 
                     // If the group does not exist, create a new subgroup
                     if (group == null || group.Title.Replace("Group ", "") != currentGroupName)
@@ -364,7 +364,7 @@ namespace Krypton.Toolkit
             else
             {
                 // If no fields exist, add a default filter item to the main group
-                FilterItemGroup1.AddFilterItem(new FilterItem(_sourceColumns));
+                FilterItemGroup1.AddFilterItem(new KryptonOutlookGridFilterItem(_sourceColumns));
             }
 
             // Resume layout to reflect the changes
@@ -372,16 +372,16 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Finds the appropriate parent <see cref="FilterItemGroup"/> for a given group name.
+        /// Finds the appropriate parent <see cref="KryptonOutlookGridFilterItemGroup"/> for a given group name.
         /// It traverses the group hierarchy (e.g., "GroupA.SubGroup1") to locate or create the correct parent.
         /// </summary>
-        /// <param name="groups">A list of existing <see cref="FilterItemGroup"/> objects.</param>
+        /// <param name="groups">A list of existing <see cref="KryptonOutlookGridFilterItemGroup"/> objects.</param>
         /// <param name="groupName">The full name of the group to find the parent for.</param>
-        /// <returns>The <see cref="FilterItemGroup"/> that should be the parent, or <c>null</c> if no suitable parent is found.</returns>
-        private static FilterItemGroup? FindParentGroup(List<FilterItemGroup> groups, string groupName)
+        /// <returns>The <see cref="KryptonOutlookGridFilterItemGroup"/> that should be the parent, or <c>null</c> if no suitable parent is found.</returns>
+        private static KryptonOutlookGridFilterItemGroup? FindParentGroup(List<KryptonOutlookGridFilterItemGroup> groups, string groupName)
         {
             string? currentGroupName = groupName;
-            FilterItemGroup? group = null;
+            KryptonOutlookGridFilterItemGroup? group = null;
 
             while (group == null && !string.IsNullOrEmpty(currentGroupName))
             {
@@ -399,14 +399,15 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Generates a <see cref="SourceColumn"/> object from a given <see cref="DataColumn"/>.
+        /// Generates a <see cref="KryptonOutlookGridFilterSourceColumn"/> object from a given <see cref="DataColumn"/>.
         /// This method can also calculate distinct values for the column if <see cref="UseDistinctDisplayLevel"/> is enabled.
         /// </summary>
         /// <param name="display">The text to display for the column in the dropdown list of fields.</param>
         /// <param name="column">The <see cref="DataColumn"/> for which to create a source column.</param>
         /// <param name="table">The <see cref="DataTable"/> in which the column is found.</param>
-        /// <returns>A <see cref="SourceColumn"/> object representing the data column.</returns>
-        private SourceColumn GenerateColumn(string display, DataColumn column, DataTable table)
+        /// <param name="format">The <see cref="System.Windows.Forms.DataGridViewCellStyle.Format"/> in which the column is found.</param>
+        /// <returns>A <see cref="KryptonOutlookGridFilterSourceColumn"/> object representing the data column.</returns>
+        private KryptonOutlookGridFilterSourceColumn GenerateColumn(string display, DataColumn column, DataTable table, string format)
         {
             List<string> distinctValues;
             Type columnType = column.DataType;
@@ -416,7 +417,7 @@ namespace Krypton.Toolkit
             {
                 distinctValues = SharedDataFunctions.CountDistinct(table, column.ColumnName);
             }
-            return new SourceColumn(column.ColumnName, display, columnType.Name);
+            return new KryptonOutlookGridFilterSourceColumn(column.ColumnName, display, columnType.Name, format);
         }
 
         #endregion Private Methods
