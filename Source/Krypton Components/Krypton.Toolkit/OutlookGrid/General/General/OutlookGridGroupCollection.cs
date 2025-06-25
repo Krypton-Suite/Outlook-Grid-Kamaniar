@@ -24,7 +24,7 @@ namespace Krypton.Toolkit
     /// <summary>
     /// List of IOutlookGridGroups
     /// </summary>
-    public class OutlookGridGroupCollection
+    public class OutlookGridGroupCollection : List<IOutlookGridGroup>
     {
         #region "Variables"
         private IOutlookGridGroup? _parentGroup;
@@ -66,7 +66,7 @@ namespace Krypton.Toolkit
         /// <summary>
         /// Gets the number of groups
         /// </summary>
-        public int Count => _groupList.Count;
+        public new int Count => _groupList.Count;
 
         #endregion
 
@@ -77,13 +77,13 @@ namespace Krypton.Toolkit
         /// </summary>
         /// <param name="index">Index in the list of groups.</param>
         /// <returns>The IOutlookGridGroup.</returns>
-        public IOutlookGridGroup? this[int index] => _groupList[index];
+        public new IOutlookGridGroup? this[int index] => _groupList[index];
 
         /// <summary>
         /// Adds a new group
         /// </summary>
         /// <param name="group">The IOutlookGridGroup.</param>
-        public void Add(IOutlookGridGroup? group)
+        public new void Add(IOutlookGridGroup? group)
         {
             _groupList.Add(group);
         }
@@ -91,7 +91,7 @@ namespace Krypton.Toolkit
         /// <summary>
         /// Sorts the groups
         /// </summary>
-        public void Sort()
+        public new void Sort()
         {
             _groupList.Sort();
         }
@@ -128,7 +128,7 @@ namespace Krypton.Toolkit
 
         #region "Internals"
 
-        internal void Clear()
+        internal new void Clear()
         {
             _parentGroup = null;
             //If a group is collapsed the rows will not appear. Then if we clear the group the rows should not remain "collapsed"

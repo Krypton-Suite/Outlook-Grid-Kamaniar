@@ -480,8 +480,8 @@ namespace Krypton.Toolkit
             _textBox.KeyUp += OnTextBoxKeyUp;
             _textBox.KeyPress += OnTextBoxKeyPress;
             _textBox.PreviewKeyDown += OnTextBoxPreviewKeyDown;
-            _textBox.Validating += OnTextBoxValidating;
-            _textBox.Validated += OnTextBoxValidated;
+            //_textBox.Validating += OnTextBoxValidating;
+            //_textBox.Validated += OnTextBoxValidated;
             _textBox.Click += OnTextBoxClick;  // SKC: make sure that the default click is also routed.
 
             // Create the element that fills the remainder space and remembers fill rectangle

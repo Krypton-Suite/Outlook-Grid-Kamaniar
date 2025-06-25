@@ -58,7 +58,7 @@ namespace TestForm
             this.kryptonPanel1.Controls.Add(this.txtNormalTextBox);
             this.kryptonPanel1.Location = new System.Drawing.Point(0, 0);
             this.kryptonPanel1.Name = "kryptonPanel1";
-            this.kryptonPanel1.Size = new System.Drawing.Size(530, 312);
+            this.kryptonPanel1.Size = new System.Drawing.Size(555, 311);
             this.kryptonPanel1.TabIndex = 0;
             // 
             // kbtnClearKryptonEvents
@@ -102,7 +102,6 @@ namespace TestForm
             this.ktxtKryptonTextBox.Name = "ktxtKryptonTextBox";
             this.ktxtKryptonTextBox.Size = new System.Drawing.Size(262, 23);
             this.ktxtKryptonTextBox.TabIndex = 1;
-            this.ktxtKryptonTextBox.TabStop = false;
             this.ktxtKryptonTextBox.Click += new System.EventHandler(this.ktxtKryptonTextBox_Click);
             this.ktxtKryptonTextBox.DoubleClick += new System.EventHandler(this.ktxtKryptonTextBox_DoubleClick);
             this.ktxtKryptonTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ktxtKryptonTextBox_KeyDown);
@@ -137,7 +136,7 @@ namespace TestForm
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.ClientSize = new System.Drawing.Size(591, 288);
+            this.ClientSize = new System.Drawing.Size(520, 283);
             this.Controls.Add(this.kryptonPanel1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
             this.MaximizeBox = false;

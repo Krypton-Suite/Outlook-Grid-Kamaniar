@@ -217,6 +217,82 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
+        /// Gets a formatted string representing the aggregated summary text for the group.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This property iterates through the cells of the <see cref="SummaryRow"/> associated with this group.
+        /// For each cell that contains a non-empty value, it constructs a string combining the aggregation type,
+        /// the header text of the corresponding column, and the formatted aggregated value.
+        /// </para>
+        /// <para>
+        /// The aggregated value from the <see cref="SummaryRow"/> cell is formatted using the
+        /// <see cref="System.Windows.Forms.DataGridViewCellStyle.Format"/> property of the respective grid column.
+        /// If a format string is applied, the value is formatted accordingly; otherwise, its string representation is used directly.
+        /// </para>
+        /// <para>
+        /// The resulting string concatenates these formatted summaries for all relevant columns,
+        /// providing a comprehensive summary of the group's aggregated data.
+        /// </para>
+        /// <para>
+        /// Returns an empty string if <see cref="SummaryRow"/> is <c>null</c> or if no cells contain summary values.
+        /// </para>
+        /// </remarks>
+        public virtual string SummaryText
+        {
+            get
+            {
+                // Use a StringBuilder for efficient string concatenation, especially for many summaries.
+                StringBuilder sb = new();
+
+                if (SummaryRow == null)
+                {
+                    return string.Empty;
+                }
+
+                var grid = (KryptonOutlookGrid)this.Column.DataGridViewColumn.DataGridView!;
+
+                // Add a line break at the start if you always want the summary on a new line after the group text.
+                // Or, you can add it conditionally later in Paint/GetPreferredHeight.
+                // For now, let's build each summary item with its own line break and indent.
+
+                for (int i = 0; i < SummaryRow.Cells.Count; i++)
+                {
+                    if (!grid.Columns[i].Visible) continue;
+                    var value = SummaryRow.Cells[i].Value == null ? string.Empty : SummaryRow.Cells[i].Value!.ToString();
+                    // Only add to summary if the value is not null/empty
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        var col = grid.FindFromColumnIndex(i)!;
+                        string cellValueFormat = grid.Columns[i].DefaultCellStyle.Format;
+                        string formattedAggregatedValueForCell = value;
+
+                        if (!string.IsNullOrEmpty(cellValueFormat))
+                        {
+                            try
+                            {
+                                formattedAggregatedValueForCell = string.Format("{0:" + cellValueFormat + "}", SummaryRow.Cells[i].Value);
+                            }
+                            catch (FormatException)
+                            {
+                                // Fallback if format is invalid, keep original string
+                                formattedAggregatedValueForCell = value;
+                            }
+                        }
+
+                        // Append each summary item on a new line with indentation
+                        // You can adjust the number of spaces for indentation.
+                        sb.AppendLine($"  {col.AggregationType} of {col.DataGridViewColumn.HeaderText}: {formattedAggregatedValueForCell}");
+                    }
+                }
+
+                // The TrimEnd() removes any trailing newlines if no summaries were added, or extra lines.
+                // If you want a blank line at the very end, remove TrimEnd().
+                return sb.ToString().TrimEnd();
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the Value of the group
         /// </summary>
         public virtual object? Value { get => _val; set => _val = value; }
@@ -230,7 +306,7 @@ namespace Krypton.Toolkit
         /// Gets or sets the associated DataGridView column.
         /// </summary>
         [DisallowNull]
-        public virtual OutlookGridColumn Column 
+        public virtual OutlookGridColumn Column
         {
             get => _column!;
             set => _column = value ?? throw new NullReferenceException(GlobalStaticValues.PropertyCannotBeNull(nameof(this.Column)));
@@ -309,6 +385,16 @@ namespace Krypton.Toolkit
             set => _itemsComparer = value;
         }
 
+        /// <summary>
+        /// Gets or sets the <see cref="OutlookGridRow"/> that represents the summary row for this group or the grand total.
+        /// </summary>
+        /// <remarks>
+        /// This property holds a reference to the special row that displays aggregated values
+        /// (e.g., sums, averages, counts) for the data rows within its associated group, or for the entire grid
+        /// if it's a grand total summary row. It is set internally when summary rows are created.
+        /// </remarks>
+        public OutlookGridRow? SummaryRow { get; set; }
+
         #endregion
 
         #region ICloneable Members
@@ -341,7 +427,7 @@ namespace Krypton.Toolkit
         #region IComparable Members
 
         /// <summary>
-        /// This is a comparison operation based on the type of the value. 
+        /// This is a comparison operation based on the type of the value.
         /// </summary>
         /// <param name="obj">the value in the related column of the item to compare to</param>
         /// <returns></returns>
@@ -349,7 +435,7 @@ namespace Krypton.Toolkit
         {
             int orderModifier = Column.SortDirection == SortOrder.Ascending ? 1 : -1;
             int compareResult = 0;
-            
+
             object? o2 = (obj as OutlookGridDefaultGroup)?.Value;
 
             if ((_val == null || _val == DBNull.Value) && o2 != null && o2 != DBNull.Value)
@@ -362,7 +448,11 @@ namespace Krypton.Toolkit
             }
             else
             {
-                if (_val is string)
+                if (_itemsComparer != null) // Use custom comparer if provided
+                {
+                    compareResult = _itemsComparer.Compare(_val, o2) * orderModifier;
+                }
+                else if (_val is string)
                 {
                     compareResult = string.Compare(_val.ToString(), o2!.ToString()) * orderModifier;
                 }
@@ -419,7 +509,27 @@ namespace Krypton.Toolkit
                 {
                     compareResult = ((Token)_val).CompareTo((Token)o2!) * orderModifier;
                 }
+                else if (_val is IComparable comparableValue) // Fallback for other IComparable types
+                {
+                    compareResult = comparableValue.CompareTo(o2) * orderModifier;
+                }
+                else
+                {
+                    // If all else fails, use ToString() for comparison (might not be ideal for all types)
+                    compareResult = string.Compare(_val?.ToString(), o2?.ToString()) * orderModifier;
+                }
             }
+
+            // If SortBySummaryCount is true, use ItemCount for comparison
+            /*if (SortBySummaryCount)
+            {
+                IOutlookGridGroup? otherGroup = obj as IOutlookGridGroup;
+                if (otherGroup != null)
+                {
+                    compareResult = _itemCount.CompareTo(otherGroup.ItemCount) * orderModifier;
+                }
+            }*/
+
             return compareResult;
         }
         #endregion

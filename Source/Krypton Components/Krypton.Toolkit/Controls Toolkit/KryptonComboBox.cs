@@ -1149,8 +1149,8 @@ namespace Krypton.Toolkit
             _comboBox.FormattingEnabledChanged += OnComboBoxFormattingEnabledChanged;
             _comboBox.SelectedValueChanged += OnComboBoxSelectedValueChanged;
             _comboBox.ValueMemberChanged += OnComboBoxValueMemberChanged;
-            _comboBox.Validating += OnComboBoxValidating;
-            _comboBox.Validated += OnComboBoxValidated;
+            //_comboBox.Validating += OnComboBoxValidating;
+            //_comboBox.Validated += OnComboBoxValidated;
             _comboHolder = new InternalPanel(this);
             _comboHolder.Controls.Add(_comboBox);
 

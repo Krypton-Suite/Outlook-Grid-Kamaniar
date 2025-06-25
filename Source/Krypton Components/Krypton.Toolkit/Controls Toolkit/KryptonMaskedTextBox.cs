@@ -483,8 +483,8 @@ namespace Krypton.Toolkit
             _maskedTextBox.KeyUp += OnMaskedTextBoxKeyUp;
             _maskedTextBox.KeyPress += OnMaskedTextBoxKeyPress;
             _maskedTextBox.PreviewKeyDown += OnMaskedTextBoxPreviewKeyDown;
-            _maskedTextBox.Validating += OnMaskedTextBoxValidating;
-            _maskedTextBox.Validated += OnMaskedTextBoxValidated;
+            //_maskedTextBox.Validating += OnMaskedTextBoxValidating;
+            //_maskedTextBox.Validated += OnMaskedTextBoxValidated;
 
             // Create the element that fills the remainder space and remembers fill rectangle
             _layoutFill = new ViewLayoutFill(_maskedTextBox);

@@ -17,14 +17,18 @@ namespace Krypton.Toolkit
     /// <summary></summary>
     [ToolboxItem(true)]
     [DefaultEvent(nameof(CheckedChanged))]
-    [DefaultProperty(nameof(Checked))]
+    [DefaultProperty(nameof(ToggleSwitchValues.Checked))]
     [DesignerCategory("code")]
     [Description("A toggle switch control.")]
     public class KryptonToggleSwitch : Control, IContentValues
     {
         #region Instance Fields
 
-        private bool _checked;
+        private const int DEFAULT_KNOB_SIZE = 20;
+        private const int DEFAULT_PADDING = 4;
+        private const int MIN_WIDTH = 50;
+        private const int MIN_HEIGHT = 20;
+
         private bool _isTracking;
         private bool _isPressed;
         private bool _isDragging;
@@ -104,32 +108,10 @@ namespace Krypton.Toolkit
 
         private bool ShouldSerializeStateTracking() => !StateTracking.IsDefault;
 
-        /// <summary>Gets or sets a value indicating whether this <see cref="KryptonToggleSwitch" /> is checked.</summary>
-        /// <value><c>true</c> if checked; otherwise, <c>false</c>.</value>
-        [Category("Behavior")]
-        [Description("Indicates whether the toggle switch is checked.")]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public bool Checked
-        {
-            get => _checked;
-            set
-            {
-                if (_checked != value)
-                {
-                    _checked = value;
-
-                    _animationTimer.Start();
-
-                    CheckedChanged?.Invoke(this, EventArgs.Empty);
-                    StartAnimation();
-                }
-            }
-        }
-
         /// <summary>Gets or sets the toggle switch values.</summary>
         /// <value>The toggle switch values.</value>
         [Category("Visuals")]
-        [Description("Indicates whether the knob should have a gradient effect.")]
+        [Description("All the toggle switch values.")]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ToggleSwitchValues ToggleSwitchValues
         {
@@ -180,15 +162,21 @@ namespace Krypton.Toolkit
 
             TabStop = true;
 
-            _knobSize = 20;
-            _padding = 4;
+            _knobSize = DEFAULT_KNOB_SIZE;
+            _padding = DEFAULT_PADDING;
             Size = new Size(90, _knobSize + _padding * 2);
 
             _animationTimer = new Timer { Interval = 15 };
 
             _animationTimer.Tick += OnAnimationTimerTick;
 
-            ToggleSwitchValues = new ToggleSwitchValues { OffColor = Color.Red, OnColor = Color.Green };
+            ToggleSwitchValues = new ToggleSwitchValues
+            {
+                TintValues = new TintValues(),
+                ColorValues = new ToggleSwitchColorValues(),
+                GradientValues = new ToggleSwitchGradientValues(),
+                MiscellaneousValues = new ToggleSwitchMiscellaneousValues()
+            };
 
             KryptonManager.GlobalPaletteChanged += OnGlobalPaletteChanged;
 
@@ -209,215 +197,215 @@ namespace Krypton.Toolkit
 
         #endregion
 
-        #region Protected Overrides
+            #region Protected Overrides
 
-        /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.Paint">Paint</see> event.</summary>
-        /// <param name="e">A <see cref="T:System.Windows.Forms.PaintEventArgs">PaintEventArgs</see> that contains the event data.</param>
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            e.Graphics.CompositingQuality = CompositingQuality.HighQuality;
-            e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-
-            IPaletteTriple state = GetCurrentState();
-
-            // Adjust the rectangle for border width
-            float borderWidth = state.PaletteBorder!.GetBorderWidth(PaletteState.Normal);
-            Rectangle adjustedBounds = AdjustForBorder(ClientRectangle, borderWidth);
-
-            DrawBackground(e.Graphics, state, adjustedBounds);
-            DrawBorder(e.Graphics, state, adjustedBounds);
-            DrawKnob(e.Graphics, state);
-            DrawOnOffText(e.Graphics, state);
-
-            e.Graphics.ResetClip();
-        }
-
-        /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseEnter">MouseEnter</see> event.</summary>
-        /// <param name="e">An <see cref="T:System.EventArgs">EventArgs</see> that contains the event data.</param>
-        protected override void OnMouseEnter(EventArgs e)
-        {
-            base.OnMouseEnter(e);
-            _isTracking = true;
-            Invalidate();
-        }
-
-        /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseLeave">MouseLeave</see> event.</summary>
-        /// <param name="e">An <see cref="T:System.EventArgs">EventArgs</see> that contains the event data.</param>
-        protected override void OnMouseLeave(EventArgs e)
-        {
-            base.OnMouseLeave(e);
-            _isTracking = false;
-            Invalidate();
-        }
-
-        /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseDown">MouseDown</see> event.</summary>
-        /// <param name="e">A <see cref="T:System.Windows.Forms.MouseEventArgs">MouseEventArgs</see> that contains the event data.</param>
-        protected override void OnMouseDown(MouseEventArgs e)
-        {
-            base.OnMouseDown(e);
-
-            Focus();
-
-            if (e.Button == MouseButtons.Left)
+            /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.Paint">Paint</see> event.</summary>
+            /// <param name="e">A <see cref="T:System.Windows.Forms.PaintEventArgs">PaintEventArgs</see> that contains the event data.</param>
+            protected override void OnPaint(PaintEventArgs e)
             {
-                // Toggle regardless of where the user clicks
-                Checked = !Checked;
+                base.OnPaint(e);
+
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.CompositingQuality = CompositingQuality.HighQuality;
+                e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                IPaletteTriple state = GetCurrentState();
+
+                // Adjust the rectangle for border width
+                float borderWidth = state.PaletteBorder!.GetBorderWidth(PaletteState.Normal);
+                Rectangle adjustedBounds = AdjustForBorder(ClientRectangle, borderWidth);
+
+                DrawBackground(e.Graphics, state, adjustedBounds);
+                DrawBorder(e.Graphics, state, adjustedBounds);
+                DrawKnob(e.Graphics, state);
+                DrawOnOffText(e.Graphics, state);
+
+                e.Graphics.ResetClip();
             }
 
-            Invalidate();
-        }
-
-
-        /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseMove">MouseMove</see> event.</summary>
-        /// <param name="e">A <see cref="T:System.Windows.Forms.MouseEventArgs">MouseEventArgs</see> that contains the event data.</param>
-        protected override void OnMouseMove(MouseEventArgs e)
-        {
-            base.OnMouseMove(e);
-
-            if (_isDragging)
+            /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseEnter">MouseEnter</see> event.</summary>
+            /// <param name="e">An <see cref="T:System.EventArgs">EventArgs</see> that contains the event data.</param>
+            protected override void OnMouseEnter(EventArgs e)
             {
-                // Update knob position based on mouse movement
-                float delta = e.X - _dragStartX;
-                _animationPosition = Math.Max(_padding, Math.Min(Width - _knobSize - _padding, _dragOffset + delta));
-
-                Invalidate(); // Redraw the control
-            }
-        }
-
-        /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseUp">MouseUp</see> event.</summary>
-        /// <param name="e">A <see cref="T:System.Windows.Forms.MouseEventArgs">MouseEventArgs</see> that contains the event data.</param>
-        protected override void OnMouseUp(MouseEventArgs e)
-        {
-            base.OnMouseUp(e);
-
-            if (_isDragging)
-            {
-                // Finish dragging and determine the final toggle state
-                _isDragging = false;
-
-                // Determine final state based on knob's position
-                float midpoint = (Width - _knobSize) / 2f;
-                Checked = _animationPosition >= midpoint;
-            }
-            else if (_isPressed)
-            {
-                // Toggle state on simple click
-                _isPressed = false;
-                Checked = !Checked;
-            }
-
-            Invalidate();
-        }
-
-        protected override void OnKeyDown(KeyEventArgs e)
-        {
-            base.OnKeyDown(e);
-
-            bool stateChanged = false;
-
-            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter || e.KeyCode == Keys.Tab ||
-                e.KeyCode == Keys.Add || e.KeyCode == Keys.Subtract || e.KeyCode == Keys.Home ||
-                e.KeyCode == Keys.End || e.KeyCode == Keys.PageUp || e.KeyCode == Keys.PageDown ||
-                e.KeyCode == Keys.Left || e.KeyCode == Keys.Right)
-            {
-                Checked = !Checked;
-                stateChanged = true;
-            }
-
-            if (stateChanged)
-            {
-                StartAnimation(); // Smooth animation for keyboard changes
+                base.OnMouseEnter(e);
+                _isTracking = true;
                 Invalidate();
             }
-        }
 
-        /// <summary>Determines whether the specified key is a regular input key or a special key that requires preprocessing.</summary>
-        /// <param name="keyData">One of the <see cref="T:System.Windows.Forms.Keys">Keys</see> values.</param>
-        /// <returns>true if the specified key is a regular input key; otherwise, false.</returns>
-        protected override bool IsInputKey(Keys keyData)
-        {
-            if (keyData == Keys.Tab)
+            /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseLeave">MouseLeave</see> event.</summary>
+            /// <param name="e">An <see cref="T:System.EventArgs">EventArgs</see> that contains the event data.</param>
+            protected override void OnMouseLeave(EventArgs e)
             {
-                return true;
+                base.OnMouseLeave(e);
+                _isTracking = false;
+                Invalidate();
             }
 
-            return base.IsInputKey(keyData);
-        }
-
-
-        /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.Resize">Resize</see> event.</summary>
-        /// <param name="e">An <see cref="T:System.EventArgs">EventArgs</see> that contains the event data.</param>
-        protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
-
-            using (GraphicsPath roundedPath = GetRoundedRectanglePath(ClientRectangle, /*ToggleSwitchValues.CornerRadius*/ 10))
+            /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseDown">MouseDown</see> event.</summary>
+            /// <param name="e">A <see cref="T:System.Windows.Forms.MouseEventArgs">MouseEventArgs</see> that contains the event data.</param>
+            protected override void OnMouseDown(MouseEventArgs e)
             {
-                Region = new Region(roundedPath);
-            }
+                base.OnMouseDown(e);
 
-            _knobSize = Math.Max(10, Math.Min(Height - _padding * 2, Width / 3));
-            
-            _padding = Math.Max(2, Height / 8);
+                Focus();
 
-            Invalidate();
-        }
-
-        /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.SizeChanged">SizeChanged</see> event.</summary>
-        /// <param name="e">An <see cref="T:System.EventArgs">EventArgs</see> that contains the event data.</param>
-        protected override void OnSizeChanged(EventArgs e)
-        {
-            base.OnSizeChanged(e);
-
-            Width = Math.Max(50, Width);
-            Height = Math.Max(20, Height);
-
-            // Ensure elements scale properly
-            _knobSize = Math.Max(10, Math.Min(Height - _padding * 2, Width / 3));
-            _padding = Math.Max(2, Height / 8);
-
-            Invalidate(); // Force redraw
-        }
-
-        /// <summary>Releases the unmanaged resources used by the <see cref="T:System.Windows.Forms.Control">Control</see> and its child controls and optionally releases the managed resources.</summary>
-        /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _animationTimer?.Dispose();
-                KryptonManager.GlobalPaletteChanged -= OnGlobalPaletteChanged;
-
-                if (_toggleSwitchValues != null)
+                if (e.Button == MouseButtons.Left)
                 {
-                    _toggleSwitchValues.PropertyChanged -= OnToggleSwitchValuesChanged;
-
-                    _toggleSwitchValues = null;
+                    // Toggle regardless of where the user clicks
+                    ToggleSwitchValues.Checked = !ToggleSwitchValues.Checked;
                 }
 
-                if (_palette != null)
-                {
-                    _palette.PalettePaint -= OnPalettePaint;
+                Invalidate();
+            }
 
-                    _palette = null;
+
+            /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseMove">MouseMove</see> event.</summary>
+            /// <param name="e">A <see cref="T:System.Windows.Forms.MouseEventArgs">MouseEventArgs</see> that contains the event data.</param>
+            protected override void OnMouseMove(MouseEventArgs e)
+            {
+                base.OnMouseMove(e);
+
+                if (_isDragging)
+                {
+                    // Update knob position based on mouse movement
+                    float delta = e.X - _dragStartX;
+                    _animationPosition = Math.Max(_padding, Math.Min(Width - _knobSize - _padding, _dragOffset + delta));
+
+                    Invalidate(); // Redraw the control
                 }
             }
 
-            base.Dispose(disposing);
-        }
+            /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.MouseUp">MouseUp</see> event.</summary>
+            /// <param name="e">A <see cref="T:System.Windows.Forms.MouseEventArgs">MouseEventArgs</see> that contains the event data.</param>
+            protected override void OnMouseUp(MouseEventArgs e)
+            {
+                base.OnMouseUp(e);
 
-        #endregion
+                if (_isDragging)
+                {
+                    // Finish dragging and determine the final toggle state
+                    _isDragging = false;
+
+                    // Determine final state based on knob's position
+                    float midpoint = (Width - _knobSize) / 2f;
+                    ToggleSwitchValues.Checked = _animationPosition >= midpoint;
+                }
+                else if (_isPressed)
+                {
+                    // Toggle state on simple click
+                    _isPressed = false;
+                    ToggleSwitchValues.Checked = !ToggleSwitchValues.Checked;
+                }
+
+                Invalidate();
+            }
+
+            protected override void OnKeyDown(KeyEventArgs e)
+            {
+                base.OnKeyDown(e);
+
+                bool stateChanged = false;
+
+                if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter || e.KeyCode == Keys.Tab ||
+                    e.KeyCode == Keys.Add || e.KeyCode == Keys.Subtract || e.KeyCode == Keys.Home ||
+                    e.KeyCode == Keys.End || e.KeyCode == Keys.PageUp || e.KeyCode == Keys.PageDown ||
+                    e.KeyCode == Keys.Left || e.KeyCode == Keys.Right)
+                {
+                    ToggleSwitchValues.Checked = !ToggleSwitchValues.Checked;
+                    stateChanged = true;
+                }
+
+                if (stateChanged)
+                {
+                    StartAnimation(); // Smooth animation for keyboard changes
+                    Invalidate();
+                }
+            }
+
+            /// <summary>Determines whether the specified key is a regular input key or a special key that requires preprocessing.</summary>
+            /// <param name="keyData">One of the <see cref="T:System.Windows.Forms.Keys">Keys</see> values.</param>
+            /// <returns>true if the specified key is a regular input key; otherwise, false.</returns>
+            protected override bool IsInputKey(Keys keyData)
+            {
+                if (keyData == Keys.Tab)
+                {
+                    return true;
+                }
+
+                return base.IsInputKey(keyData);
+            }
+
+
+            /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.Resize">Resize</see> event.</summary>
+            /// <param name="e">An <see cref="T:System.EventArgs">EventArgs</see> that contains the event data.</param>
+            protected override void OnResize(EventArgs e)
+            {
+                base.OnResize(e);
+
+                using (GraphicsPath roundedPath = GetRoundedRectanglePath(ClientRectangle, /*ToggleSwitchValues.CornerRadius*/ 10))
+                {
+                    Region = new Region(roundedPath);
+                }
+
+                _knobSize = Math.Max(10, Math.Min(Height - _padding * 2, Width / 3));
+                
+                _padding = Math.Max(2, Height / 8);
+
+                Invalidate();
+            }
+
+            /// <summary>Raises the <see cref="E:System.Windows.Forms.Control.SizeChanged">SizeChanged</see> event.</summary>
+            /// <param name="e">An <see cref="T:System.EventArgs">EventArgs</see> that contains the event data.</param>
+            protected override void OnSizeChanged(EventArgs e)
+            {
+                base.OnSizeChanged(e);
+
+                Width = Math.Max(MIN_WIDTH, Width);
+                Height = Math.Max(MIN_HEIGHT, Height);
+
+                // Ensure elements scale properly
+                _knobSize = Math.Max(10, Math.Min(Height - _padding * 2, Width / 3));
+                _padding = Math.Max(2, Height / 8);
+
+                Invalidate(); // Force redraw
+            }
+
+            /// <summary>Releases the unmanaged resources used by the <see cref="T:System.Windows.Forms.Control">Control</see> and its child controls and optionally releases the managed resources.</summary>
+            /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing)
+                {
+                    _animationTimer?.Dispose();
+                    KryptonManager.GlobalPaletteChanged -= OnGlobalPaletteChanged;
+
+                    if (_toggleSwitchValues != null)
+                    {
+                        _toggleSwitchValues.PropertyChanged -= OnToggleSwitchValuesChanged;
+
+                        _toggleSwitchValues = null;
+                    }
+
+                    if (_palette != null)
+                    {
+                        _palette.PalettePaint -= OnPalettePaint;
+
+                        _palette = null;
+                    }
+                }
+
+                base.Dispose(disposing);
+            }
+
+            #endregion
 
         #region Private Methods
 
         /// <summary>Starts the animation.</summary>
         private void StartAnimation()
         {
-            _animationPosition = Checked ? _padding : Width - _knobSize - _padding;
+            _animationPosition = ToggleSwitchValues.Checked ? _padding : Width - _knobSize - _padding;
             _animationTimer.Start();
         }
 
@@ -436,7 +424,7 @@ namespace Krypton.Toolkit
             float knobDiameter = _knobSize;
 
             // Adjust x-position based on RTL
-            float x = Checked ? Width - knobDiameter - _padding : _padding;
+            float x = ToggleSwitchValues.Checked ? Width - knobDiameter - _padding : _padding;
 
             float y = (Height - knobDiameter) / 2f;
 
@@ -510,11 +498,11 @@ namespace Krypton.Toolkit
         private void DrawBackground(Graphics graphics, IPaletteTriple state, Rectangle bounds)
         {
             // Emboss effect
-            if (ToggleSwitchValues.EnableEmbossEffect)
+            if (ToggleSwitchValues.GradientValues.EnableEmbossEffect)
             {
                 Color embossColor = KryptonManager.CurrentGlobalPalette.GetBackColor1(PaletteBackStyle.ButtonStandalone, PaletteState.Disabled);
                 
-                using (GraphicsPath embossPath = GetRoundedRectangle(bounds, ToggleSwitchValues.CornerRadius))
+                using (GraphicsPath embossPath = GetRoundedRectangle(bounds, ToggleSwitchValues.MiscellaneousValues.CornerRadius))
                 {
                     using (Brush embossBrush = new SolidBrush(Color.FromArgb(50, embossColor)))
                     {
@@ -526,7 +514,7 @@ namespace Krypton.Toolkit
             }
 
             // Background with rounded corners
-            using (GraphicsPath backgroundPath = GetRoundedRectangle(bounds, ToggleSwitchValues.CornerRadius))
+            using (GraphicsPath backgroundPath = GetRoundedRectangle(bounds, ToggleSwitchValues.MiscellaneousValues.CornerRadius))
             {
                 using (Brush backgroundBrush = new SolidBrush(state.PaletteBack.GetBackColor1(PaletteState.Normal)))
                 {
@@ -538,7 +526,7 @@ namespace Krypton.Toolkit
         private void DrawBorder(Graphics graphics, IPaletteTriple state, Rectangle bounds)
         {
             // Border with rounded corners
-            using (GraphicsPath borderPath = GetRoundedRectangle(bounds, ToggleSwitchValues.CornerRadius))
+            using (GraphicsPath borderPath = GetRoundedRectangle(bounds, ToggleSwitchValues.MiscellaneousValues.CornerRadius))
             {
                 using (Pen borderPen = new Pen(state.PaletteBorder!.GetBorderColor1(PaletteState.Normal), state.PaletteBorder.GetBorderWidth(PaletteState.Normal)))
                 {
@@ -547,15 +535,28 @@ namespace Krypton.Toolkit
             }
         }
 
+        private Color InterpolateColor(Color color1, Color color2, float progress, float startIntensity, float endIntensity)
+        {
+            // Calculate the intensity based on progress
+            float intensity = startIntensity + (endIntensity - startIntensity) * progress;
+
+            // Interpolate the colors with the calculated intensity
+            int r = (int)(color1.R + (color2.R - color1.R) * progress * intensity);
+            int g = (int)(color1.G + (color2.G - color1.G) * progress * intensity);
+            int b = (int)(color1.B + (color2.B - color1.B) * progress * intensity);
+
+            return Color.FromArgb(255, Math.Min(r, 255), Math.Min(g, 255), Math.Min(b, 255));
+        }
+
         private void DrawKnob(Graphics graphics, IPaletteTriple state)
         {
             _knob = GetKnobRectangle();
 
-            if (ToggleSwitchValues.EnableKnobGradient)
+            if (ToggleSwitchValues.GradientValues.EnableKnobGradient)
             {
-                Color startColor, endColor;
+                /*Color startColor, endColor;
 
-                if (ToggleSwitchValues.UseThemeColors && KryptonManager.CurrentGlobalPalette != null)
+                if (ToggleSwitchValues.MiscellaneousValues.UseThemeColors && KryptonManager.CurrentGlobalPalette != null)
                 {
                     // Get colors from the current theme
                     Color themeStartChecked = KryptonManager.CurrentGlobalPalette.GetContentShortTextColor1(PaletteContentStyle.ButtonStandalone, PaletteState.CheckedNormal);
@@ -564,52 +565,40 @@ namespace Krypton.Toolkit
                     Color themeEndNormal = KryptonManager.CurrentGlobalPalette.GetContentShortTextColor2(PaletteContentStyle.ButtonStandalone, PaletteState.Normal);
 
                     // Interpolate between the "Off" and "On" colors
-                    startColor = InterpolateColor(themeStartNormal, themeStartChecked, _gradientAnimationProgress);
-                    endColor = InterpolateColor(themeEndNormal, themeEndChecked, _gradientAnimationProgress);
+                    startColor = InterpolateColor(themeStartNormal, themeStartChecked, _gradientAnimationProgress, ToggleSwitchValues.GradientValues.GradientStartIntensity, ToggleSwitchValues.GradientValues.GradientEndIntensity);
+                    endColor = InterpolateColor(themeEndNormal, themeEndChecked, _gradientAnimationProgress, ToggleSwitchValues.GradientValues.GradientStartIntensity, ToggleSwitchValues.GradientValues.GradientEndIntensity);
                 }
                 else
                 {
                     // Default: Smoothly transition between red and green
-                    startColor = InterpolateColor(Color.DarkRed, Color.LimeGreen, _gradientAnimationProgress);
-                    endColor = InterpolateColor(Color.Red, Color.Green, _gradientAnimationProgress);
+                    startColor = InterpolateColor(ToggleSwitchValues.ColorValues.OffColor, ToggleSwitchValues.ColorValues.OnColor, _gradientAnimationProgress, ToggleSwitchValues.GradientValues.GradientStartIntensity, ToggleSwitchValues.GradientValues.GradientEndIntensity);
+                    endColor = InterpolateColor(ToggleSwitchValues.ColorValues.OffColor2, ToggleSwitchValues.ColorValues.OnColor2, _gradientAnimationProgress, ToggleSwitchValues.GradientValues.GradientStartIntensity, ToggleSwitchValues.GradientValues.GradientEndIntensity);
+                    
+                    // Fallback to AdjustBrightness if OffColor2/OnColor2 are not available
+                    if (ToggleSwitchValues.ColorValues.OffColor2 == Color.Empty || ToggleSwitchValues.ColorValues.OnColor2 == Color.Empty)
+                    {
+                        endColor = AdjustBrightness(startColor, 0.5f); // much lighter/darker
+                    }
                 }
 
-                using (LinearGradientBrush knobBrush = new LinearGradientBrush(_knob, startColor, endColor, ToggleSwitchValues.GradientDirection))
+                using (LinearGradientBrush knobBrush = new LinearGradientBrush(_knob, startColor, endColor, ToggleSwitchValues.GradientValues.GradientDirection))
                 {
                     graphics.FillEllipse(knobBrush, _knob);
-                }
+                }*/
             }
             else
             {
-                Color knobColor;
-                if (ToggleSwitchValues.UseThemeColors && KryptonManager.CurrentGlobalPalette != null && !ToggleSwitchValues.OnlyShowColorOnKnob)
+                // Fallback to solid color if gradient is disabled
+                Color? knobColor = ToggleSwitchValues.Checked ? ToggleSwitchValues.ColorValues.SolidColorValues?.OnColor : ToggleSwitchValues.ColorValues.SolidColorValues?.OffColor;
+                if (knobColor != null)
                 {
-                    knobColor = Checked ? state.PaletteBack.GetBackColor1(PaletteState.Pressed)
-                        : _isTracking
-                        ? state.PaletteBack.GetBackColor1(PaletteState.Tracking)
-                        : state.PaletteBack.GetBackColor2(PaletteState.Normal);
-                }
-                else
-                {
-                    knobColor = Checked ? ToggleSwitchValues.OnColor : ToggleSwitchValues.OffColor;
-                }
-
-                using (SolidBrush knobBrush = new SolidBrush(knobColor))
-                {
-                    graphics.FillEllipse(knobBrush, _knob);
+                    using (SolidBrush knobBrush = new SolidBrush((Color)knobColor))
+                    {
+                        graphics.FillEllipse(knobBrush, _knob);
+                    }
                 }
             }
         }
-
-        private Color InterpolateColor(Color color1, Color color2, float progress)
-        {
-            int r = (int)(color1.R + (color2.R - color1.R) * progress);
-            int g = (int)(color1.G + (color2.G - color1.G) * progress);
-            int b = (int)(color1.B + (color2.B - color1.B) * progress);
-            return Color.FromArgb(255, r, g, b);
-        }
-
-
 
         /// <summary>Draws the on off text.</summary>
         /// <param name="graphics">The graphics.</param>
@@ -617,50 +606,55 @@ namespace Krypton.Toolkit
         private void DrawOnOffText(Graphics graphics, IPaletteTriple state)
         {
             // Determine the text color
-            Color textColor;
-            if (ToggleSwitchValues.UseThemeColors && KryptonManager.CurrentGlobalPalette != null)
+            Color? textColor;
+            if (ToggleSwitchValues.MiscellaneousValues.UseThemeColors && KryptonManager.CurrentGlobalPalette != null)
             {
-                textColor = Checked
+                textColor = ToggleSwitchValues.Checked
                     ? KryptonManager.CurrentGlobalPalette.GetContentShortTextColor1(PaletteContentStyle.ButtonStandalone, PaletteState.CheckedNormal)
                     : KryptonManager.CurrentGlobalPalette.GetContentShortTextColor1(PaletteContentStyle.ButtonStandalone, PaletteState.Normal);
             }
             else
             {
-                textColor = Checked ? ToggleSwitchValues.OnColor : ToggleSwitchValues.OffColor;
+                textColor = ToggleSwitchValues.Checked ? ToggleSwitchValues.ColorValues.SolidColorValues?.OnColor : ToggleSwitchValues.ColorValues.SolidColorValues?.OffColor;
             }
 
             // Determine the text content
-            string text = Checked ? KryptonManager.Strings.CustomStrings.On : KryptonManager.Strings.CustomStrings.Off;
+            string text = ToggleSwitchValues.Checked ? KryptonManager.Strings.CustomStrings.On : KryptonManager.Strings.CustomStrings.Off;
 
             // Define font and measure text size
             float fontSize = Height / 3f;
             using (Font font = new Font(Font.FontFamily, fontSize, FontStyle.Bold))
             {
-                using (Brush textBrush = new SolidBrush(textColor))
+                if (textColor != null)
                 {
-                    SizeF textSize = graphics.MeasureString(text, font);
-
-                    float textX;
-                    float textPadding = Math.Max(4, _knobSize / 4); // Ensure a minimum padding
-
-                    // Position knob's right edge
-                    float knobEdge = _animationPosition + _knobSize + textPadding;
-
-                    // Ensure text remains within bounds
-                   textX = Checked ? _padding : Math.Min(Width - textSize.Width - _padding, knobEdge);
-                   
-                    float textY = (Height - textSize.Height) / 2f; // Center text vertically
-
-                    // Enable better text rendering for smooth appearance
-                    graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
-
-                    if (ToggleSwitchValues.ShowText)
+                    using (Brush textBrush = new SolidBrush((Color)textColor))
                     {
-                        // Draw the text
-                        graphics.DrawString(text, font, textBrush, new PointF(textX, textY));
+                        SizeF textSize = graphics.MeasureString(text, font);
 
-                        // Reset text rendering hint
-                        graphics.TextRenderingHint = TextRenderingHint.SystemDefault;
+                        float textX;
+                        float textPadding = Math.Max(4, _knobSize / 4); // Ensure a minimum padding
+
+                        // Position knob's right edge
+                        float knobEdge = _animationPosition + _knobSize + textPadding;
+
+                        // Ensure text remains within bounds
+                        textX = ToggleSwitchValues.Checked
+                            ? _padding
+                            : Math.Min(Width - textSize.Width - _padding, knobEdge);
+
+                        float textY = (Height - textSize.Height) / 2f; // Center text vertically
+
+                        // Enable better text rendering for smooth appearance
+                        graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
+
+                        if (ToggleSwitchValues.MiscellaneousValues.ShowText)
+                        {
+                            // Draw the text
+                            graphics.DrawString(text, font, textBrush, new PointF(textX, textY));
+
+                            // Reset text rendering hint
+                            graphics.TextRenderingHint = TextRenderingHint.SystemDefault;
+                        }
                     }
                 }
             }
@@ -717,24 +711,44 @@ namespace Krypton.Toolkit
         private void OnAnimationTimerTick(object? sender, EventArgs e)
         {
             // Determine the correct position for animation
-            float targetPosition = Checked ? Width - _knobSize - _padding : _padding;
+            float targetPosition = ToggleSwitchValues.Checked ? Width - _knobSize - _padding : _padding;
 
             float step = 0.1f; // Adjust for smoothness
 
             _animationPosition = Lerp(_animationPosition, targetPosition, step);
 
+            // ✨ Update gradient animation progress
+            _gradientAnimationProgress = (_animationPosition - _padding) / (Width - _knobSize - _padding * 2);
+            _gradientAnimationProgress = Math.Max(0f, Math.Min(1f, _gradientAnimationProgress)); // Clamp
+
             if (Math.Abs(_animationPosition - targetPosition) < 0.5f)
             {
                 _animationPosition = targetPosition;
+                _gradientAnimationProgress = ToggleSwitchValues.Checked ? 1f : 0f; // Final snap
                 _animationTimer.Stop();
             }
 
             Invalidate(Rectangle.Ceiling(_knob));
         }
 
+        /*private float SpringLerp(float start, float end, float amount)
+        {
+            amount = Math.Clamp(amount, 0f, 1f);
+            amount = (float)(Math.Sin(amount * Math.PI * (0.2f + 2.5f * amount * amount * amount)) * Math.Pow(1f - amount, 2.2f) + amount);
+            return start + (end - start) * amount;
+        }*/
+
         private float Lerp(float start, float end, float amount) => start + (end - start) * amount;
 
-        private void OnToggleSwitchValuesChanged(object? sender, PropertyChangedEventArgs e) => Invalidate();
+        private void OnToggleSwitchValuesChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ToggleSwitchValues.Checked))
+            {
+                CheckedChanged?.Invoke(this, EventArgs.Empty);
+                StartAnimation();
+            }
+            Invalidate();
+        }
 
         #endregion
 
@@ -816,7 +830,6 @@ namespace Krypton.Toolkit
         public override ImageLayout BackgroundImageLayout { get; set; }
 
         #endregion
-
 
         #region IContentValues
 

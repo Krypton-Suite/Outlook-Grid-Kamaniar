@@ -207,5 +207,10 @@ namespace TestForm
         {
             new SplashScreenExample().Show();
         }
+
+        private void kbtnToggleSwitch_Click(object sender, EventArgs e)
+        {
+            new ToggleSwitchTest().Show();
+        }
     }
 }

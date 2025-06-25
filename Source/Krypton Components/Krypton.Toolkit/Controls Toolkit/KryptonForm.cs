@@ -98,13 +98,14 @@ namespace Krypton.Toolkit
         private bool _lastNotNormal;
         private bool _useDropShadow;
         private StatusStrip? _statusStrip;
+        private bool _mdiTransferred;
         private Bitmap? _cacheBitmap;
         private Icon? _cacheIcon;
         private Control? _activeControl;
         private KryptonFormTitleStyle _titleStyle;
         private InheritBool _internalPanelState;
         private int _foundRibbonOffset = -1;
-        private KryptonPanel _internalKryptonPanel;
+        private readonly KryptonPanel _internalKryptonPanel;
 
         #endregion
 
@@ -388,8 +389,14 @@ namespace Krypton.Toolkit
         /// </summary>
         public void SetInheritedControlOverride()
         {
+            if (_mdiTransferred)
+            {
+                return;
+            }
+
             _internalPanelState = InheritBool.True;
             _foundRibbonOffset = 0;
+            _mdiTransferred = true;
         }
 
         /// <inheritdoc cref="Form" />
@@ -450,10 +457,9 @@ namespace Krypton.Toolkit
                 {
                     _internalKryptonPanel.ClientSize = ClientSize;
                 }
-                // Deal with adding after the `InitializeComponent` has completed
-                return _foundRibbonOffset == -1
-                    ? _internalKryptonPanel.Controls
-                    : base.Controls;
+
+                // Route to base.Controls when MDI is enabled
+                return base.IsMdiContainer ? base.Controls : _internalKryptonPanel.Controls;
             }
         }
 
@@ -1182,6 +1188,25 @@ namespace Krypton.Toolkit
             }
 
             base.WndProc(ref m);
+        }
+
+        /// <summary>Ensures MDI logic runs correctly after form creation.</summary>
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            if (IsMdiContainer && !_mdiTransferred)
+            {
+                SetInheritedControlOverride();
+
+                Control.ControlCollection checkForRibbon = _internalKryptonPanel.Controls;
+
+                for (var i = checkForRibbon.Count - 1; i >= 0; i--)
+                {
+                    base.Controls.Add(checkForRibbon[i]);
+                }
+
+            }
         }
 
         #endregion
@@ -2055,7 +2080,41 @@ namespace Krypton.Toolkit
         #endregion
 
         #region #1979 Temporary Fix
+        //[DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
         public KryptonPanel InternalPanel => _internalKryptonPanel;
+
+        /// <summary>
+        /// Resize the form according to the setting of System.Windows.Forms.Form.AutoSizeMode.
+        /// </summary>
+        [Browsable(true)]
+        [EditorBrowsable(EditorBrowsableState.Always)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public new bool AutoSize
+        {
+            get => base.AutoSize;
+            set
+            {
+                base.AutoSize = value;
+                _internalKryptonPanel.AutoSize = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the mode by which the form automatically resizes itself.
+        /// </summary>
+        [Browsable(true)]
+        [DefaultValue(AutoSizeMode.GrowOnly)]
+        [Localizable(true)]
+        public new AutoSizeMode AutoSizeMode
+        {
+            get => base.AutoSizeMode;
+            set
+            {
+                base.AutoSizeMode = value;
+                _internalKryptonPanel.AutoSizeMode = value;
+            }
+        }
+
         #endregion #1979 Temporary Fix
     }
 }

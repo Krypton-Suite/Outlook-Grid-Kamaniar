@@ -36,7 +36,7 @@ namespace Krypton.Toolkit
         /// <param name="showCtrlCopy">Show extraText in title. If null (default) then only when Warning or Error icon is used.</param>
         /// <param name="showCloseButton">Displays the close button. If null (default), then the close button will be displayed.</param>
         /// <returns>One of the System.Windows.Forms.DialogResult values.</returns>
-        public static DialogResult Show(string text, 
+        public static DialogResult Show(string text,
             bool? showCtrlCopy = null,
             bool? showCloseButton = null) =>
             ShowCore(null, text, string.Empty,
@@ -106,7 +106,7 @@ namespace Krypton.Toolkit
         /// <param name="showCloseButton">Displays the close button. If null (default), then the close button will be displayed.</param>
         /// <param name="defaultButton">One of the KryptonMessageBoxDefaultButton values that specifies the default button for the message box.</param>
         /// <returns>One of the System.Windows.Forms.DialogResult values.</returns>
-        public static DialogResult Show(string text, string caption, KryptonMessageBoxButtons buttons, 
+        public static DialogResult Show(string text, string caption, KryptonMessageBoxButtons buttons,
             KryptonMessageBoxIcon icon, KryptonMessageBoxDefaultButton defaultButton,
             bool? showCtrlCopy = null,
             bool? showCloseButton = null) =>
@@ -331,7 +331,7 @@ namespace Krypton.Toolkit
         /// <param name="options">One of the System.Windows.Forms.MessageBoxOptions values that specifies which display and association options will be used for the message box. You may pass in 0 if you wish to use the defaults.</param>
         /// <returns>One of the System.Windows.Forms.DialogResult values.</returns>
         public static DialogResult Show(IWin32Window owner, string? text, string? caption, KryptonMessageBoxButtons buttons, bool displayHelpButton,
-            KryptonMessageBoxIcon icon, KryptonMessageBoxDefaultButton defaultButton, MessageBoxOptions options, 
+            KryptonMessageBoxIcon icon, KryptonMessageBoxDefaultButton defaultButton, MessageBoxOptions options,
             bool? showCtrlCopy = null,
             bool? showCloseButton = null) =>
             ShowCore(owner, text, caption, buttons, icon, defaultButton, options,
@@ -362,7 +362,7 @@ namespace Krypton.Toolkit
                                              KryptonMessageBoxIcon icon = KryptonMessageBoxIcon.None,
                                              KryptonMessageBoxDefaultButton defaultButton = KryptonMessageBoxDefaultButton.Button1,
                                              MessageBoxOptions options = 0,
-                                             HelpInfo? helpInfo = null, 
+                                             HelpInfo? helpInfo = null,
                                              bool? showCtrlCopy = null,
                                              bool? showHelpButton = null,
                                              bool? showCloseButton = null)

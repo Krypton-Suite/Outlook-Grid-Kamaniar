@@ -46,7 +46,6 @@ namespace Krypton.Toolkit
 
         public VisualMessageBoxForm()
         {
-            SetInheritedControlOverride();
             InitializeComponent();
         }
 
@@ -58,7 +57,6 @@ namespace Krypton.Toolkit
                                        bool? showHelpButton,
                                        bool? showCloseButton)
         {
-            SetInheritedControlOverride();
             // Store incoming values
             _text = CommonHelper.NormalizeLineBreaks(text ?? string.Empty);
             _caption = caption;
@@ -222,8 +220,8 @@ namespace Krypton.Toolkit
                         SystemSounds.Hand.Play();
                         break;
                     case KryptonMessageBoxIcon.SystemHand:
-                    //case KryptonMessageBoxIcon.SystemStop:
-                    //case KryptonMessageBoxIcon.SystemError:
+                        //case KryptonMessageBoxIcon.SystemStop:
+                        //case KryptonMessageBoxIcon.SystemError:
                         _messageIcon.Image = SystemIcons.Hand.ToBitmap();
                         SystemSounds.Hand.Play();
                         break;
@@ -268,13 +266,13 @@ namespace Krypton.Toolkit
                         SystemSounds.Exclamation.Play();
                         break;
                     case KryptonMessageBoxIcon.Shield:
-                        _messageIcon.Image = OSUtilities.IsWindowsTen 
-                            ? UACShieldIconResources.UAC_Shield_Windows_10 
+                        _messageIcon.Image = OSUtilities.IsWindowsTen
+                            ? UACShieldIconResources.UAC_Shield_Windows_10
                             : UACShieldIconResources.UAC_Shield_Windows_7;
                         break;
                     case KryptonMessageBoxIcon.WindowsLogo:
-                        _messageIcon.Image = OSUtilities.IsWindowsTen 
-                            ? MessageBoxImageResources.Windows_8_and_10_Logo 
+                        _messageIcon.Image = OSUtilities.IsWindowsTen
+                            ? MessageBoxImageResources.Windows_8_and_10_Logo
                             : SystemIcons.WinLogo.ToBitmap();
                         break;
                     case KryptonMessageBoxIcon.Application:
@@ -505,6 +503,57 @@ namespace Krypton.Toolkit
 
         private Size UpdateMessageSizing(IWin32Window? showOwner)
         {
+            Size textSize;
+            using (Graphics g = CreateGraphics())
+            {
+                // Find size of the label, with a max of 2/3 screen width
+                Screen screen = showOwner is IWin32Window window
+                    ? Screen.FromHandle(window.Handle)
+                    : Screen.PrimaryScreen ?? throw new NullReferenceException("Screen.PrimaryScreen returned null");
+
+                Size scaledMonitorSize = screen.WorkingArea.Size;
+                scaledMonitorSize.Width = (int)(scaledMonitorSize.Width * 2 / 3.0f);
+                scaledMonitorSize.Height = (int)(scaledMonitorSize.Height * 0.95f);
+
+                int availableWidthForText = scaledMonitorSize.Width - (_messageIcon.Width + _messageIcon.Margin.Horizontal + kpnlContentArea.Margin.Horizontal);
+                if (availableWidthForText <= 0) availableWidthForText = 100;
+
+                Font textFont = krtbMessageText.StateCommon.Content.GetContentShortTextFont(PaletteState.Normal) ?? KryptonManager.CurrentGlobalPalette!.BaseFont;
+                Font captionFont = KryptonManager.CurrentGlobalPalette.BaseFont;
+
+                // Measure the string
+                SizeF messageSize = TextRenderer.MeasureText(_text, textFont, new Size(availableWidthForText, scaledMonitorSize.Height), TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl); // <--- Breakpoint 2 here. What is messageSize.Height?
+                // SKC: Don't forget to add the TextExtra into the calculation
+                SizeF captionSize = TextRenderer.MeasureText($"{_caption} {TextExtra}", captionFont, scaledMonitorSize, TextFormatFlags.WordBreak | TextFormatFlags.SingleLine);
+
+                var messageXSize = Math.Max(messageSize.Width, captionSize.Width);
+                var messageYSize = messageSize.Height + (textFont.Height / 2);
+                // Work out DPI adjustment factor
+                var factorX = g.DpiX > 96 ? (1.0f * g.DpiX / 96) : 1.0f;
+                var factorY = g.DpiY > 96 ? (1.0f * g.DpiY / 96) : 1.0f;
+
+                messageXSize *= factorX;
+                messageYSize *= factorY;
+
+                textSize = Size.Ceiling(new SizeF(messageXSize, messageYSize));
+            }
+
+            // Calculate the size of the icon area and text area including margins
+            Padding textPadding = krtbMessageText.StateCommon.Content.GetBorderContentPadding(null, PaletteState.Normal);
+            Padding textAreaAllMargin = Padding.Add(textPadding, kpnlContentArea.Margin);
+
+            Size iconArea = new Size(_messageIcon.Width + _messageIcon.Margin.Left + _messageIcon.Margin.Right,
+                _messageIcon.Height + _messageIcon.Margin.Top + _messageIcon.Margin.Bottom);
+
+            Size textArea = new Size(textSize.Width + textAreaAllMargin.Left + textAreaAllMargin.Right,
+                textSize.Height + textAreaAllMargin.Top + textAreaAllMargin.Bottom);
+
+            return new Size(textArea.Width + iconArea.Width,
+                Math.Max(iconArea.Height, textArea.Height));
+        }
+
+        /*private Size UpdateMessageSizing(IWin32Window? showOwner)
+        {
             // Update size of the message label but with a maximum width
             Size textSize;
             using (Graphics g = CreateGraphics())
@@ -517,7 +566,7 @@ namespace Krypton.Toolkit
                 Size scaledMonitorSize = screen.WorkingArea.Size;
                 scaledMonitorSize.Width = (int)(scaledMonitorSize.Width * 2 / 3.0f);
                 scaledMonitorSize.Height = (int)(scaledMonitorSize.Height * 0.95f);
-                
+
                 Font textFont = krtbMessageText.StateCommon.Content.GetContentShortTextFont(PaletteState.Normal) ?? KryptonManager.CurrentGlobalPalette!.BaseFont;
                 Font captionFont = KryptonManager.CurrentGlobalPalette.BaseFont;
 
@@ -549,7 +598,7 @@ namespace Krypton.Toolkit
 
             return new Size(textArea.Width + iconArea.Width,
                 Math.Max(iconArea.Height, textArea.Height));
-        }
+        }*/
 
         private Size UpdateButtonsSizing()
         {
