@@ -598,12 +598,12 @@ namespace Krypton.Toolkit
                     // E.g., HelperExtensions.ToInteger(obj), HelperExtensions.ToDouble(obj)
                     MethodInfo? conversionMethod = null;
                     if (nonNullableCommonType == typeof(int)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToInteger), BindingFlags.Static | BindingFlags.Public);
-                    else if (nonNullableCommonType == typeof(long)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToLong), BindingFlags.Static | BindingFlags.Public); // Assume ToLong exists
+                    else if (nonNullableCommonType == typeof(long)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToLong), BindingFlags.Static | BindingFlags.Public);
                     else if (nonNullableCommonType == typeof(double)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToDouble), BindingFlags.Static | BindingFlags.Public);
-                    else if (nonNullableCommonType == typeof(decimal)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToDecimal), BindingFlags.Static | BindingFlags.Public); // Assume ToDecimal exists
-                    else if (nonNullableCommonType == typeof(bool)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToBoolean), BindingFlags.Static | BindingFlags.Public); // Assume ToBoolean exists
-                    else if (nonNullableCommonType == typeof(DateTime)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToDateTime), BindingFlags.Static | BindingFlags.Public); // Assume ToDateTime exists
-                    else if (nonNullableCommonType == typeof(Guid)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToGuid), BindingFlags.Static | BindingFlags.Public); // Assume ToGuid exists
+                    else if (nonNullableCommonType == typeof(decimal)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToDecimal), BindingFlags.Static | BindingFlags.Public);
+                    else if (nonNullableCommonType == typeof(bool)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToBoolean), BindingFlags.Static | BindingFlags.Public);
+                    else if (nonNullableCommonType == typeof(DateTime)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToDateTime), BindingFlags.Static | BindingFlags.Public);
+                    else if (nonNullableCommonType == typeof(Guid)) conversionMethod = typeof(HelperExtensions).GetMethod(nameof(HelperExtensions.ToGuid), BindingFlags.Static | BindingFlags.Public);
 
 
                     if (conversionMethod != null)

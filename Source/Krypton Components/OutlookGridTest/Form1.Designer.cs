@@ -52,15 +52,17 @@
             this.BtnLoadListOfRawArray = new Krypton.Toolkit.KryptonButton();
             this.BtnLoadDictionary = new Krypton.Toolkit.KryptonButton();
             this.BtnSelectionMode = new Krypton.Toolkit.KryptonButton();
-            this.kryptonExtraGrid1 = new Krypton.Toolkit.KryptonExtraGrid();
             this.kryptonTableLayoutPanel1 = new Krypton.Toolkit.KryptonTableLayoutPanel();
+            this.kryptonExtraGrid1 = new Krypton.Toolkit.KryptonExtraGrid();
+            this.buttonSpecHeaderGroup1 = new Krypton.Toolkit.ButtonSpecHeaderGroup();
             this._textBox = new Krypton.Toolkit.KryptonTextBox();
             ((System.ComponentModel.ISupportInitialize)(this.outlookGrid1)).BeginInit();
+            this.kryptonTableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.kryptonExtraGrid1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.kryptonExtraGrid1.OutlookGrid)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.kryptonExtraGrid1.Panel)).BeginInit();
+            this.kryptonExtraGrid1.Panel.SuspendLayout();
             this.kryptonExtraGrid1.SuspendLayout();
-            this.kryptonTableLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // BtnEnableSearch
@@ -208,46 +210,6 @@
             this.BtnSelectionMode.Values.Text = "Cell Select";
             this.BtnSelectionMode.Click += new System.EventHandler(this.BtnSelectionMode_Click);
             // 
-            // kryptonExtraGrid1
-            // 
-            this.kryptonExtraGrid1.Dock = System.Windows.Forms.DockStyle.Fill;
-            // 
-            // 
-            // 
-            this.kryptonExtraGrid1.GroupBox.AllowDrop = true;
-            this.kryptonExtraGrid1.GroupBox.Dock = System.Windows.Forms.DockStyle.Top;
-            this.kryptonExtraGrid1.GroupBox.Location = new System.Drawing.Point(0, 0);
-            this.kryptonExtraGrid1.GroupBox.Name = "KryptonOutlookGridGroupBox";
-            this.kryptonExtraGrid1.GroupBox.Size = new System.Drawing.Size(1068, 46);
-            this.kryptonExtraGrid1.GroupBox.TabIndex = 1;
-            this.kryptonExtraGrid1.HeaderVisibleSecondary = false;
-            this.kryptonExtraGrid1.Location = new System.Drawing.Point(3, 279);
-            // 
-            // 
-            // 
-            this.kryptonExtraGrid1.OutlookGrid.AllowDrop = true;
-            this.kryptonExtraGrid1.OutlookGrid.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.kryptonExtraGrid1.OutlookGrid.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.kryptonExtraGrid1.OutlookGrid.Location = new System.Drawing.Point(0, 73);
-            this.kryptonExtraGrid1.OutlookGrid.Name = "";
-            this.kryptonExtraGrid1.OutlookGrid.ShowLines = false;
-            this.kryptonExtraGrid1.OutlookGrid.Size = new System.Drawing.Size(1068, 140);
-            this.kryptonExtraGrid1.OutlookGrid.TabIndex = 0;
-            // 
-            // 
-            // 
-            this.kryptonExtraGrid1.SearchToolBar.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.kryptonExtraGrid1.SearchToolBar.Location = new System.Drawing.Point(0, 46);
-            this.kryptonExtraGrid1.SearchToolBar.MinimumSize = new System.Drawing.Size(0, 0);
-            this.kryptonExtraGrid1.SearchToolBar.Name = "";
-            this.kryptonExtraGrid1.SearchToolBar.Size = new System.Drawing.Size(1068, 27);
-            this.kryptonExtraGrid1.SearchToolBar.TabIndex = 1;
-            this.kryptonExtraGrid1.ShowGrandTotalAtBottom = true;
-            this.kryptonExtraGrid1.Size = new System.Drawing.Size(999, 270);
-            this.kryptonExtraGrid1.TabIndex = 12;
-            this.kryptonExtraGrid1.ValuesPrimary.Image = null;
-            this.kryptonExtraGrid1.ValuesSecondary.Heading = "";
-            // 
             // kryptonTableLayoutPanel1
             // 
             this.kryptonTableLayoutPanel1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -264,6 +226,37 @@
             this.kryptonTableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.kryptonTableLayoutPanel1.Size = new System.Drawing.Size(1005, 552);
             this.kryptonTableLayoutPanel1.TabIndex = 13;
+            // 
+            // kryptonExtraGrid1
+            // 
+            this.kryptonExtraGrid1.ButtonSpecs.Add(this.buttonSpecHeaderGroup1);
+            this.kryptonExtraGrid1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kryptonExtraGrid1.HeaderVisibleSecondary = false;
+            this.kryptonExtraGrid1.Location = new System.Drawing.Point(3, 279);
+            // 
+            // kryptonExtraGrid1.OutlookGrid
+            // 
+            this.kryptonExtraGrid1.OutlookGrid.AllowDrop = true;
+            this.kryptonExtraGrid1.OutlookGrid.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.kryptonExtraGrid1.OutlookGrid.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.kryptonExtraGrid1.OutlookGrid.EnableSearchOnKeyPress = true;
+            this.kryptonExtraGrid1.OutlookGrid.Location = new System.Drawing.Point(0, 0);
+            this.kryptonExtraGrid1.OutlookGrid.Name = "OutlookGrid";
+            this.kryptonExtraGrid1.OutlookGrid.ShowColumnFilter = true;
+            this.kryptonExtraGrid1.OutlookGrid.Size = new System.Drawing.Size(997, 238);
+            this.kryptonExtraGrid1.OutlookGrid.TabIndex = 0;
+            this.kryptonExtraGrid1.ShowGrandTotalAtBottom = true;
+            this.kryptonExtraGrid1.ShowGroupBox = false;
+            this.kryptonExtraGrid1.ShowSearchToolBar = false;
+            this.kryptonExtraGrid1.Size = new System.Drawing.Size(999, 270);
+            this.kryptonExtraGrid1.TabIndex = 1;
+            this.kryptonExtraGrid1.ValuesPrimary.Image = null;
+            this.kryptonExtraGrid1.ValuesSecondary.Heading = "";
+            // 
+            // buttonSpecHeaderGroup1
+            // 
+            this.buttonSpecHeaderGroup1.Text = "Hi";
+            this.buttonSpecHeaderGroup1.UniqueName = "e788dad1d2104ab487187eac5dacf0ff";
             // 
             // _textBox
             // 
@@ -294,11 +287,13 @@
             this.Text = "Form1";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             ((System.ComponentModel.ISupportInitialize)(this.outlookGrid1)).EndInit();
+            this.kryptonTableLayoutPanel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.kryptonExtraGrid1.OutlookGrid)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.kryptonExtraGrid1.Panel)).EndInit();
+            this.kryptonExtraGrid1.Panel.ResumeLayout(false);
+            this.kryptonExtraGrid1.Panel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.kryptonExtraGrid1)).EndInit();
             this.kryptonExtraGrid1.ResumeLayout(false);
-            this.kryptonTableLayoutPanel1.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -330,8 +325,9 @@
         private Krypton.Toolkit.KryptonButton BtnLoadListOfRawArray;
         private Krypton.Toolkit.KryptonButton BtnLoadDictionary;
         private Krypton.Toolkit.KryptonButton BtnSelectionMode;
-        private Krypton.Toolkit.KryptonExtraGrid kryptonExtraGrid1;
         private Krypton.Toolkit.KryptonTableLayoutPanel kryptonTableLayoutPanel1;
         private Krypton.Toolkit.KryptonTextBox _textBox;
+        private Krypton.Toolkit.KryptonExtraGrid kryptonExtraGrid1;
+        private Krypton.Toolkit.ButtonSpecHeaderGroup buttonSpecHeaderGroup1;
     }
 }
