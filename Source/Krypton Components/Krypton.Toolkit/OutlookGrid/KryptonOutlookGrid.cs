@@ -102,9 +102,9 @@ namespace Krypton.Toolkit
         private bool _hideColumnOnGrouping;
 
         //Nodes
-        private bool _showLines;
+        private bool _showLines = true;
         internal bool InExpandCollapseMouseCapture;
-        private GridFillMode _fillMode;
+        private GridFillMode _fillMode = GridFillMode.GroupsAndNodes;
 
         //Formatting
         private List<ConditionalFormatting> _formatConditions;
@@ -155,7 +155,7 @@ namespace Krypton.Toolkit
             _internalRows = [];
             //_originalRows = new List<OutlookGridRow>();
             _internalColumns = [];
-            _fillMode = GridFillMode.GroupsOnly;
+            _fillMode = GridFillMode.GroupsAndNodes;
 
             // Cache the current global palette setting
             _palette = KryptonManager.CurrentGlobalPalette;
@@ -2911,7 +2911,7 @@ namespace Krypton.Toolkit
             azer.Start();
 #endif
             List<OutlookGridRow> list;
-            List<OutlookGridRow> tmp; // = new List<OutlookGridRow>();
+            List<OutlookGridRow> tmp = null!; // = new List<OutlookGridRow>();
             IOutlookGridGroup? grParent = null;
             Rows.Clear();
             _groupCollection.Clear();
@@ -2952,7 +2952,10 @@ namespace Krypton.Toolkit
             if (_internalColumns.CountGrouped() == 0)
             {
                 //Applying sort
-                list.Sort(new OutlookGridRowComparer2(_internalColumns.GetIndexAndSortSortedOnlyColumns()));
+                //list.Sort(new OutlookGridRowComparer2(_internalColumns.GetIndexAndSortSortedOnlyColumns()));
+                var orders = _internalColumns.GetIndexAndSortSortedOnlyColumns();
+                if (orders.Count > 0)
+                    list.Sort(new OutlookGridRowComparer2(orders));
 
                 //Add rows to underlying DataGridView
                 if (_fillMode == GridFillMode.GroupsOnly)
@@ -3086,6 +3089,12 @@ namespace Krypton.Toolkit
                 //Get a list of rows (GroupRow and Non-GroupRow)
                 RecursiveFillOutlookGridRows(_groupCollection, tmp);
 
+                //Finally add the rows to underlying DataGridView after all the magic !
+                Rows.AddRange(tmp.ToArray());
+            }
+
+            if (tmp != null)
+            {
                 var firstColumn = this.Columns.GetFirstColumn(DataGridViewElementStates.Visible);
                 int firstColumnIndex = firstColumn == null ? -1 : firstColumn.Index;
                 bool _requireSummary = _fillMode != GridFillMode.GroupsOnly && _internalColumns.Any(c => c.AggregationType != KryptonOutlookGridAggregationType.None);
@@ -3109,9 +3118,10 @@ namespace Krypton.Toolkit
                         tmp.Add(row);
                     }
                 }
-
-                //Finally add the rows to underlying DataGridView after all the magic !
-                Rows.AddRange(tmp.ToArray());
+                else
+                {
+                    _summaryGrid?.Visible = false;
+                }
             }
             Cursor.Current = Cursors.Default;
 #if DEBUG
@@ -3950,6 +3960,14 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
+        /// Clears the internal columns.
+        /// </summary>
+        public void ClearInternalColumns()
+        {
+            _internalColumns?.Clear();
+        }
+
+        /// <summary>
         /// Creates and configures a <see cref="DataGridViewColumn"/> based on the provided column name and data type.
         /// This method acts as a factory for different column types (e.g., checkbox, image, or text)
         /// and sets essential properties like Name, HeaderText, and DataPropertyName.
@@ -4243,7 +4261,6 @@ namespace Krypton.Toolkit
                 if (_showGrandTotal != value)
                 {
                     _showGrandTotal = value;
-                    _summaryGrid?.Visible = _showGrandTotal;
                     Fill();
                 }
             }
@@ -4517,7 +4534,6 @@ namespace Krypton.Toolkit
                 _summaryGrid.Columns[e.Column.Index].Width = this.Columns[e.Column.Index].Width;
                 if (_summaryGrid.Rows.Count > 0)
                 {
-                    //_summaryGrid.Height = _summaryGrid.Rows[0].Height;
                     var sHeight = (_summaryGrid.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
                     _summaryGrid.Height = sHeight;
                     _summaryGrid.Invalidate();
@@ -4542,6 +4558,7 @@ namespace Krypton.Toolkit
             _summaryGrid.Enabled = false;
             _summaryGrid.ReadOnly = true;
             _summaryGrid.TabStop = false;
+            _summaryGrid.Visible = true;
             _summaryGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             _summaryGrid.ScrollBars = ScrollBars.None;
             _summaryGrid.RowHeadersVisible = this.RowHeadersVisible;
@@ -4561,6 +4578,7 @@ namespace Krypton.Toolkit
                 {
                     var index = _summaryGrid.Columns.Add(parentCol.Name, "");
                     _summaryGrid.Columns[index].Width = parentCol.Width;
+                    _summaryGrid.Columns[index].DisplayIndex = parentCol.DisplayIndex;
                     _summaryGrid.Columns[index].Visible = parentCol.Visible;
                     _summaryGrid.Columns[index].ValueType = parentCol.ValueType;
                     _summaryGrid.Columns[index].DefaultCellStyle.Alignment = parentCol.DefaultCellStyle.Alignment;
@@ -4588,6 +4606,28 @@ namespace Krypton.Toolkit
         public bool ShowColumnFilter { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the column filter should apply in real-time as the user input changes.
+        /// </summary>
+        /// <value>
+        ///   <see langword="true"/> if the column filter applies immediately as input changes;
+        ///   <see langword="false"/> if the filter requires an explicit action (ok button) to take effect.
+        ///   The default value for this property is <see langword="false"/>.
+        /// </value>
+        /// <remarks>
+        /// This property is typically used in conjunction with <see cref="ShowColumnFilter"/>.
+        /// When set to <see langword="true"/>, the grid will filter its data dynamically based on the user's input in the column filter UI,
+        /// providing an interactive and immediate filtering experience.
+        /// <para/>
+        /// **Performance Note:** Enabling <see cref="LiveColumnFilter"/> may lead to lower performance when dealing with a very large number of records,
+        /// as filtering operations are executed continuously with each user input. Consider setting this to <see langword="false"/>
+        /// for improved responsiveness in such scenarios, requiring an explicit action to apply the filter.
+        /// <para/>
+        /// </remarks>
+        [DefaultValue(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public bool LiveColumnFilter { get; set; }
+
+        /// <summary>
         /// Handles the click event for the filter button, opening a filter dialog for the selected column.
         /// </summary>
         /// <param name="sender">The source of the event, typically the filter button.</param>
@@ -4605,7 +4645,8 @@ namespace Krypton.Toolkit
                 {
                     Text = $"Filter for {col.DataGridViewColumn.HeaderText}"
                 };
-                filterBuilder.FilterChanged += FilterBuilder_FilterChanged;
+                if (LiveColumnFilter)
+                    filterBuilder.FilterChanged += FilterBuilder_FilterChanged;
                 var result = filterBuilder.ShowDialog();
                 if (result == DialogResult.OK)
                 {
@@ -4619,7 +4660,7 @@ namespace Krypton.Toolkit
             }
             finally
             {
-                if (filterBuilder != null)
+                if (filterBuilder != null && LiveColumnFilter)
                     filterBuilder.FilterChanged -= FilterBuilder_FilterChanged;
             }
         }
@@ -4653,8 +4694,7 @@ namespace Krypton.Toolkit
         private void OnClearFilterClick(object? sender, EventArgs e)
         {
             var col = _internalColumns.FindFromColumnIndex(_colSelected)!;
-            col.Filters = null;
-            ApplyFilter();
+            ClearColumnFilter(col.Name!);
         }
 
         /// <summary>
@@ -4664,11 +4704,7 @@ namespace Krypton.Toolkit
         /// <param name="e">An <see cref="EventArgs"/> object that contains the event data.</param>
         private void OnClearAllFilterClick(object? sender, EventArgs e)
         {
-            foreach (var col in _internalColumns)
-            {
-                col.Filters = null;
-            }
-            ApplyFilter();
+            ClearAllColumnFilter();
         }
 
         /// <summary>
@@ -4741,6 +4777,49 @@ namespace Krypton.Toolkit
             _internalRows = filteredResults;*/
 
             Fill();
+        }
+
+        /// <summary>
+        /// Clears the filter for a specific column and reapplies the overall grid filter.
+        /// </summary>
+        /// <param name="columnName">The name of the column for which to clear the filter.</param>
+        /// <remarks>
+        /// This method looks up the column by its <paramref name="columnName"/>.
+        /// If a filter is currently applied to that column (i.e., its <c>Filters</c> property is not <c>null</c>),
+        /// the filter is removed by setting <c>Filters</c> to <c>null</c>.
+        /// After clearing the column's filter, <see cref="ApplyFilter"/> is invoked
+        /// to refresh the grid's display based on the updated filter criteria across all columns.
+        /// </remarks>
+        public void ClearColumnFilter(string columnName)
+        {
+            var col = _internalColumns[columnName]!;
+            if (col.Filters != null)
+            {
+                col.Filters = null;
+                ApplyFilter();
+            }
+        }
+
+        /// <summary>
+        /// Clears filters from all columns that currently have them applied and reapplies the overall grid filter.
+        /// </summary>
+        /// <remarks>
+        /// This method iterates through all internal columns to identify those with active filters (where <c>Filters</c> is not <c>null</c>).
+        /// For each identified column, its filter is cleared by setting its <c>Filters</c> property to <c>null</c>.
+        /// After all column filters have been cleared, <see cref="ApplyFilter"/> is called
+        /// to update the grid's display, showing all data unconstrained by column-specific filters.
+        /// </remarks>
+        public void ClearAllColumnFilter()
+        {
+            var filteredColumns = _internalColumns.Where(col => col.Filters != null).ToList();
+            if (filteredColumns != null && filteredColumns.Count > 0)
+            {
+                for (int i = 0; i < filteredColumns.Count; i++)
+                {
+                    filteredColumns[i].Filters = null;
+                }
+                ApplyFilter();
+            }
         }
 
         #endregion Filter
@@ -4833,22 +4912,15 @@ namespace Krypton.Toolkit
         {
             if (!EnableSearchOnKeyPress || !this.ReadOnly)
             {
-                base.OnKeyPress(e);
                 return;
             }
-            if (e.KeyChar == 8)
+            // Handle Backspace key if SearchText is not empty
+            if (e.KeyChar == (char)8 && SearchText.Length > 0)
             {
-                if (SearchText.Length > 0)
-                {
-                    SearchText = SearchText.Substring(0, SearchText.Length - 1);
-                    Search(SearchText);
-                }
+                SearchText = SearchText.Substring(0, SearchText.Length - 1);
+                SearchText = Search(SearchText);
             }
-            else if (e.KeyChar < 32 || e.KeyChar > 128)
-            {
-                return;
-            }
-            else
+            else if (e.KeyChar >= (char)32 && e.KeyChar <= (char)128) // Handle printable ASCII characters (space to tilde)
             {
                 SearchText += e.KeyChar;
                 SearchText = Search(SearchText);
@@ -4880,7 +4952,7 @@ namespace Krypton.Toolkit
         /// Performs a search operation within the KryptonOutlookGrid based on the provided text.
         /// </summary>
         /// <param name="text">The text to search for.</param>
-        /// <param name="columnIndex">
+        /// <param name="searchColumnIndex">
         /// The index of the column to search within. If -1 (default), the search will consider
         /// the current cell's column, or the first visible column if no cell is current.
         /// </param>
@@ -4893,22 +4965,19 @@ namespace Krypton.Toolkit
         /// or directly populated rows when no `DataSource` is assigned.
         /// </exception>
         /// <remarks>
-        /// This method intelligently determines the data source type (e.g., internal `_originalRows`, `DataTable`, or no data source)
-        /// and delegates the actual search logic to specialized helper methods like `SearchInOutlookGridRows`,
-        /// `SearchInDataTable`, or `SearchWithoutSource`.
         /// <para>
         /// After the search, if any rows remain, it attempts to set the <see cref="System.Windows.Forms.DataGridView.CurrentCell"/>
         /// to the first visible cell of the first visible row, skipping group rows if present.
         /// </para>
         /// </remarks>
-        public string Search(string text, int columnIndex = -1)
+        public string Search(string text, int searchColumnIndex = -1)
         {
-            int currentCellIndex = columnIndex < 0 ? this.CurrentCell?.ColumnIndex ?? -1 : columnIndex;
+            int currentCellIndex = searchColumnIndex < 0 ? this.CurrentCell?.ColumnIndex ?? -1 : searchColumnIndex;
             int currentRowIndex;
             string matchText;
             if (_originalRows != null)
             {
-                matchText = SearchInOutlookGridRows(text, currentCellIndex);
+                matchText = SearchInOutlookGridRows(text, searchColumnIndex);
             }
             else if (this.DataSource != null)
             {
@@ -4925,7 +4994,7 @@ namespace Krypton.Toolkit
             }
             else if (this.DataSource == null)
             {
-                matchText = SearchWithoutSource(text, currentCellIndex);
+                matchText = SearchWithoutSource(text, searchColumnIndex);
             }
             else
             {
@@ -4956,124 +5025,191 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Searches the internal `_originalRows` (List of <see cref="OutlookGridRow"/>) for the specified text.
+        /// Searches the rows of the OutlookGrid based on the provided text, either in a specific column or all visible columns.
+        /// The filtered rows are then applied to the grid via the internal `Fill()` method.
         /// </summary>
-        /// <param name="textToSearch">The text to search for.</param>
-        /// <param name="currentCellIndex">
-        /// The index of the column to search within. If -1, the search will be performed across all cells in a row
-        /// when <see cref="DataGridView.SelectionMode"/> is <see cref="DataGridViewSelectionMode.FullRowSelect"/>.
-        /// Otherwise, it searches only within the specified column.
-        /// </param>
-        /// <returns>
-        /// The text that was successfully matched. If no match is found for the given `textToSearch`,
-        /// it returns a truncated version (last character removed), indicating a fallback attempt.
-        /// </returns>
+        /// <param name="textToSearch">The text to search for within the grid rows.</param>
+        /// <param name="searchColumnIndex">The zero-based index of the column to search. If -1, all visible columns are searched.</param>
+        /// <returns>The <paramref name="textToSearch"/> if at least one row matches the search criteria; otherwise, returns an empty string.</returns>
         /// <remarks>
-        /// The search behavior depends on the grid's <see cref="DataGridView.SelectionMode"/> and
-        /// the <c>UseFormattedValueForSearch</c> property. It filters the `_originalRows` and
-        /// updates the `_internalRows` collection, then calls `Fill()` to refresh the grid display.
-        /// All comparisons are case-insensitive.
+        /// This method directly filters an internal collection of OutlookGridRow objects (`_originalRows`)
+        /// and updates the grid's displayed rows (`_internalRows`) by calling `Fill()`.
+        /// This approach is used when filtering by `BindingSource.Filter` is not applicable or desired.
+        /// It performs a case-insensitive substring search.
         /// </remarks>
-        private string SearchInOutlookGridRows(string textToSearch, int currentCellIndex = -1)
+        private string SearchInOutlookGridRows(string textToSearch, int searchColumnIndex = -1)
         {
-            HashSet<OutlookGridRow> lst = [];
+            List<OutlookGridRow> filteredRows = new();
+
             if (string.IsNullOrEmpty(textToSearch))
             {
-                lst = _originalRows;
+                _internalRows = _originalRows.ToList();
+                Fill();
+                return string.Empty;
             }
-            else
+            Func<OutlookGridRow, bool> rowFilterPredicate;
+            if (searchColumnIndex >= 0)
             {
-                string searchText = textToSearch.ToUpper();
-                if (SelectionMode == DataGridViewSelectionMode.FullRowSelect)
+                // Search in a specific column
+                rowFilterPredicate = row =>
                 {
-                    if (UseFormattedValueForSearch)
-                        lst = new HashSet<OutlookGridRow>(_originalRows.Where(p => p.Cells.Cast<DataGridViewCell>()
-                            .Any(q => q.FormattedValue.ToStringNull().ToUpper().Contains(searchText))));
-                    else
-                        lst = new HashSet<OutlookGridRow>(_originalRows.Where(p => p.Cells.Cast<DataGridViewCell>()
-                            .Any(q => q.Value.ToStringNull().ToUpper().Contains(searchText))));
-                }
-                else
-                {
-                    if (currentCellIndex >= 0)
+                    // Validate column index to prevent ArgumentOutOfRangeException
+                    if (searchColumnIndex >= row.Cells.Count)
                     {
-                        if (UseFormattedValueForSearch)
-                            lst = new HashSet<OutlookGridRow>(_originalRows.Where(p => p.Cells[currentCellIndex].FormattedValue.ToStringNull().ToUpper().Contains(searchText)));
-                        else
-                            lst = new HashSet<OutlookGridRow>(_originalRows.Where(p => p.Cells[currentCellIndex].Value.ToStringNull().ToUpper().Contains(searchText)));
+                        return false; // Column index out of bounds for this row
                     }
-                    else
-                    {
-                        lst = _originalRows;
-                    }
-                }
+
+                    DataGridViewCell cell = row.Cells[searchColumnIndex];
+                    string cellValue = UseFormattedValueForSearch ?
+                                       cell.FormattedValue.ToStringNull() :
+                                       cell.Value.ToStringNull();
+                    return cellValue.Contains(textToSearch, StringComparison.OrdinalIgnoreCase);
+                };
             }
-            if (lst.Count <= 0)
+            else // searchColumnIndex is -1: Search all visible columns
+            {
+                rowFilterPredicate = row => row.Cells.Cast<DataGridViewCell>()
+                                                   .Any(cell =>
+                                                   {
+                                                       // Only search visible columns
+                                                       if (cell.OwningColumn == null || !cell.OwningColumn.Visible)
+                                                       {
+                                                           return false;
+                                                       }
+
+                                                       string cellValue = UseFormattedValueForSearch ?
+                                                                          cell.FormattedValue.ToStringNull() :
+                                                                          cell.Value.ToStringNull();
+                                                       return cellValue.Contains(textToSearch, StringComparison.OrdinalIgnoreCase);// .ToUpper().Contains(searchTextUpper);
+                                                   });
+            }
+
+            filteredRows = _originalRows.Where(row =>
+            {
+                return rowFilterPredicate(row);
+            }).ToList();
+
+            if (filteredRows.Count <= 0)
             {
                 return textToSearch.Substring(0, textToSearch.Length - 1);
             }
-            _internalRows = lst.ToList();
+            _internalRows = filteredRows;
             Fill();
             return textToSearch;
         }
 
         /// <summary>
         /// Searches the grid's <see cref="System.Data.DataTable"/> data source by applying a `RowFilter`.
+        /// The search can be performed across all visible columns or restricted to a specific column.
         /// </summary>
-        /// <param name="textToSearch">The text to search for.</param>
+        /// <param name="textToSearch">The text to search for within the specified column(s).</param>
         /// <param name="dt">The <see cref="System.Data.DataTable"/> associated with the grid's data source.</param>
+        /// <param name="searchColumnIndex">
+        /// The zero-based index of the column to search within. If set to -1 (default),
+        /// the search will be performed across all currently visible columns of the grid.
+        /// If a specific column index is provided but is invalid or refers to an invisible column,
+        /// the filter will be cleared.
+        /// </param>
         /// <returns>
-        /// The text that was successfully used for filtering. If no rows match the full `textToSearch`,
-        /// it recursively tries a truncated version (last character removed). Returns an empty string
-        /// if `textToSearch` is empty or if an error occurs.
+        /// The text that was successfully used for filtering (i.e., <paramref name="textToSearch"/>).
+        /// Returns an empty string if:
+        /// <list type="bullet">
+        ///     <item><paramref name="textToSearch"/> is empty or contains only whitespace.</item>
+        ///     <item>The specified <paramref name="searchColumnIndex"/> is out of bounds or refers to a non-visible column.</item>
+        ///     <item>An error occurs during the filter application process.</item>
+        /// </list>
         /// </returns>
         /// <remarks>
-        /// This method dynamically builds a `RowFilter` expression for the `DataTable.DefaultView`.
-        /// It constructs "OR" conditions across visible columns, attempting to match:
+        /// This method dynamically builds a `RowFilter` expression for either the <see cref="System.Data.DataTable.DefaultView"/>
+        /// or the <see cref="System.Windows.Forms.BindingSource.Filter"/> property, depending on the grid's data source.
+        /// <para/>
+        /// **Filter Construction Logic:**
         /// <list type="bullet">
-        ///     <item>String columns using `LIKE '%{textToSearch}%'`.</item>
-        ///     <item>Numeric columns using `=` if `textToSearch` is numeric.</item>
-        ///     <item>DateTime columns using `=` if `textToSearch` is a valid date.</item>
+        ///     <item>If <paramref name="searchColumnIndex"/> is -1, it constructs "OR" conditions across all currently visible columns of the grid.</item>
+        ///     <item>If <paramref name="searchColumnIndex"/> is a valid index, it constructs a filter for only that specific column.</item>
         /// </list>
-        /// If the initial filter yields no results, it attempts to backspace the search text.
-        /// Errors during filter application are caught and logged.
+        /// The filter attempts to match values based on the column's <see cref="System.Data.DataColumn.DataType"/>:
+        /// <list type="bullet">
+        ///     <item>String columns are filtered using `LIKE '%{textToSearch}%'`.</item>
+        ///     <item>Numeric columns are filtered using `=` if <paramref name="textToSearch"/> can be parsed as a number.</item>
+        ///     <item>DateTime columns are filtered using `=` if <paramref name="textToSearch"/> is a valid date, formatted as `#yyyy-MM-dd HH:mm:ss#`.</item>
+        ///     <item>Boolean columns are filtered using `=` for "true" or "false" string matches.</item>
+        ///     <item>Guid columns are filtered using `=` if <paramref name="textToSearch"/> is a valid GUID string.</item>
+        ///     <item>TimeSpan columns are converted to string (`CONVERT({columnName}, 'System.String')`) and then filtered using `LIKE '%{textToSearch}%'`.</item>
+        /// </list>
+        /// Errors encountered during the filter application (e.g., malformed filter strings) are caught,
+        /// and the filter is cleared to prevent the grid from entering a stuck state.
         /// </remarks>
-        private string SearchInDataTable(string textToSearch, System.Data.DataTable dt)
+        private string SearchInDataTable(string textToSearch, System.Data.DataTable dt, int searchColumnIndex = -1)
         {
-            var grid = this; // Assuming 'this' refers to your DataGridView or a class that contains it
+            var grid = this;
+
             object? gridActualDataSource = grid.DataSource;
             // Try to get the BindingSource if the grid is bound to one.
             // We'll prioritize using the BindingSource.Filter if available.
             BindingSource? bindingSource = gridActualDataSource as BindingSource;
+            System.Data.DataView? dv = null;
             try
             {
-                var dv = dt.DefaultView;
-                if (string.IsNullOrWhiteSpace(textToSearch)) // Use IsNullOrWhiteSpace for better handling of empty/whitespace strings
+                dv = dt.DefaultView;
+                if (string.IsNullOrWhiteSpace(textToSearch))
                 {
-                    dv.RowFilter = string.Empty;
+                    if (bindingSource != null)
+                        bindingSource.Filter = string.Empty;
+                    else
+                        dv.RowFilter = string.Empty;
+
+                    // Ensure grid display is updated when filter is cleared
+                    grid.ClearSelection();
+                    grid.Refresh();
                     return string.Empty;
                 }
 
                 var filterBuilder = new StringBuilder();
                 string escapedTextToSearch = textToSearch.Replace("'", "''"); // Escape single quotes for SQL-like strings
 
-                for (int i = 0; i < grid.ColumnCount; i++)
-                {
-                    // Ensure the column is visible and data property name corresponds to a DataTable column
-                    if (!grid.Columns[i].Visible)
-                        continue;
+                // --- Logic to determine which columns to search based on searchColumnIndex ---
+                IEnumerable<int> columnIndicesToProcess;
 
+                if (searchColumnIndex != -1)
+                {
+                    // If a specific column is requested, only consider that one
+                    // First, validate the index and visibility
+                    if (searchColumnIndex < 0 || searchColumnIndex >= grid.ColumnCount || !grid.Columns[searchColumnIndex].Visible)
+                    {
+                        // If the specified column is invalid or not visible, clear filter and return empty search text
+                        if (bindingSource != null)
+                            bindingSource.Filter = string.Empty;
+                        else
+                            dv.RowFilter = string.Empty;
+                        return string.Empty; // Invalid column, so effectively no search happened
+                    }
+                    columnIndicesToProcess = new int[] { searchColumnIndex };
+                }
+                else
+                {
+                    // Otherwise, iterate through all visible columns
+                    // THIS IS THE MODIFIED LINE: Explicitly cast the lambda to Func<int, bool>
+                    columnIndicesToProcess = Enumerable.Range(0, grid.ColumnCount)
+                                                       .Where((Func<int, bool>)(idx => grid.Columns[idx].Visible));
+                }
+                // --- End of searchColumnIndex logic ---
+
+
+                foreach (int i in columnIndicesToProcess)
+                {
                     string columnName = grid.Columns[i].DataPropertyName;
                     if (string.IsNullOrEmpty(columnName))
                         columnName = grid.Columns[i].Name;
 
                     if (string.IsNullOrEmpty(columnName) || !dt.Columns.Contains(columnName))
-                        continue;
+                        continue; // Skip if column is not found in DataTable or is invalid
 
                     Type? columnType = dt.Columns[columnName]?.DataType;
 
-                    if (columnType == null) continue; // Column not found in DataTable
+                    if (columnType == null) continue;
 
+                    // Build filter conditions based on column type
                     if (columnType == typeof(string))
                     {
                         AppendFilter(filterBuilder, $"{columnName} LIKE '%{escapedTextToSearch}%'");
@@ -5084,7 +5220,6 @@ namespace Krypton.Toolkit
                     }
                     else if (columnType == typeof(DateTime) && textToSearch.IsDate())
                     {
-                        // For DateTime, it's safer to use a try-parse and format it correctly
                         AppendFilter(filterBuilder, $"{columnName} = #{textToSearch.ToDateTime().ToString("yyyy-MM-dd HH:mm:ss")}#");
                     }
                     else if (columnType == typeof(bool) && (textToSearch.Equals("true", StringComparison.OrdinalIgnoreCase) || textToSearch.Equals("false", StringComparison.OrdinalIgnoreCase)))
@@ -5097,12 +5232,12 @@ namespace Krypton.Toolkit
                     }
                     else if (columnType == typeof(TimeSpan))
                     {
-                        // For general text search on TimeSpan columns, converting to string and using LIKE is usually the best approach.
                         AppendFilter(filterBuilder, $"CONVERT({columnName}, 'System.String') LIKE '%{escapedTextToSearch}%'");
                     }
                 }
 
-                if (bindingSource != null) // If BindingSource is present, use its Filter property
+                // Apply the constructed filter string
+                if (bindingSource != null)
                 {
                     if (filterBuilder.Length > 0)
                         bindingSource.Filter = filterBuilder.ToString();
@@ -5117,15 +5252,22 @@ namespace Krypton.Toolkit
                         dv.RowFilter = string.Empty;
                 }
 
-                return dv.Count > 0 ? textToSearch : SearchInDataTable(textToSearch.Substring(0, textToSearch.Length - 1), dt);
+                // Ensure grid display is updated after filter is applied
+                grid.ClearSelection();
+                grid.Refresh();
+
+                return textToSearch;
             }
             catch (Exception)
             {
-                // If an error occurs, clear the filter to avoid a stuck state
+                // If an error occurs during filter application, clear the filter to avoid a stuck state
                 if (bindingSource != null)
                     bindingSource.Filter = string.Empty;
                 else
-                    dt?.DefaultView.RowFilter = string.Empty;
+                    dv?.RowFilter = string.Empty;
+
+                grid.ClearSelection();
+                grid.Refresh(); // Refresh after clearing error filter
                 return string.Empty;
             }
         }
@@ -5162,44 +5304,64 @@ namespace Krypton.Toolkit
         /// </remarks>
         private string SearchWithoutSource(string textToSearch, int searchColumnIndex = -1)
         {
-            if (string.IsNullOrWhiteSpace(textToSearch))
+            if (string.IsNullOrEmpty(textToSearch))
             {
-                foreach (DataGridViewRow row in this.Rows)
+                this.SuspendLayout(); // Suspend layout for the grid
+                try
                 {
-                    row.Visible = true;
+                    foreach (DataGridViewRow row in this.Rows)
+                    {
+                        if (row.IsNewRow) continue;
+                        row.Visible = true;
+                    }
                 }
+                finally
+                {
+                    this.ResumeLayout(); // Resume layout for the grid
+                }
+                this.Refresh(); // Ensure UI updates
                 return string.Empty;
             }
 
             bool foundMatch = false;
 
-            foreach (DataGridViewRow row in this.Rows)
+            this.SuspendLayout(); // Suspend layout for the grid
+            try
             {
-                bool rowMatches = false;
 
-                if (searchColumnIndex >= 0)
+                foreach (DataGridViewRow row in this.Rows)
                 {
-                    string cellValue = row.Cells[searchColumnIndex].Value?.ToString() ?? string.Empty;
-                    rowMatches = cellValue.Contains(textToSearch, StringComparison.OrdinalIgnoreCase);
-                }
-                else
-                {
-                    foreach (DataGridViewCell cell in row.Cells)
+                    if (row.IsNewRow) continue; // Always skip the new row placeholder
+                    bool rowMatches = false;
+
+                    if (searchColumnIndex >= 0)
                     {
-                        string cellValue = cell.Value?.ToString() ?? string.Empty;
-                        if (cellValue.Contains(textToSearch, StringComparison.OrdinalIgnoreCase))
+                        string cellValue = row.Cells[searchColumnIndex].Value?.ToString() ?? string.Empty;
+                        rowMatches = cellValue.Contains(textToSearch, StringComparison.OrdinalIgnoreCase);
+                    }
+                    else
+                    {
+                        foreach (DataGridViewCell cell in row.Cells)
                         {
-                            rowMatches = true;
-                            break;
+                            string cellValue = cell.Value?.ToString() ?? string.Empty;
+                            if (cellValue.Contains(textToSearch, StringComparison.OrdinalIgnoreCase))
+                            {
+                                rowMatches = true;
+                                break;
+                            }
                         }
                     }
+                    row.Visible = rowMatches;
+                    foundMatch |= rowMatches;
                 }
-
-                row.Visible = rowMatches;
-                foundMatch |= rowMatches;
             }
-
-            return foundMatch ? string.Empty : SearchWithoutSource(textToSearch.Substring(0, textToSearch.Length - 1), searchColumnIndex);
+            finally
+            {
+                this.ResumeLayout(); // Resume layout for the grid
+            }
+            this.Refresh(); // Ensure UI updates
+            return textToSearch;
+            //return foundMatch ? textToSearch : SearchWithoutSource(textToSearch.Substring(0, textToSearch.Length - 1), searchColumnIndex);
         }
 
         #region Paint Search Text
@@ -5366,10 +5528,10 @@ namespace Krypton.Toolkit
                 {
                     if (_searchToolBar != null && value == null)
                     {
-                        _searchToolBar.Search -= SearchToolBar_Search;
-                        _searchToolBar.OnFilter -= SearchToolBar_OnFilter;
                         this.ColumnAdded -= KryptonOutlookGrid_ColumnAddedOrRemoved;
                         this.ColumnRemoved -= KryptonOutlookGrid_ColumnAddedOrRemoved;
+                        _searchToolBar.Search -= SearchToolBar_Search;
+                        _searchToolBar.OnFilter -= SearchToolBar_OnFilter;
                     }
                     _searchToolBar = value;
                     if (_searchToolBar != null)
@@ -5413,22 +5575,6 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
-        /// Raises the <see cref="E:System.Windows.Forms.Control.KeyDown"/> event.
-        /// </summary>
-        /// <param name="e">A <see cref="T:System.Windows.Forms.KeyEventArgs"/> that contains the event data.</param>
-        /// <remarks>
-        /// This method extends the base class functionality to provide a custom keyboard shortcut.
-        /// If the Control key and the 'F' key are pressed simultaneously,
-        /// it toggles the visibility of the internal search toolbar (`_searchToolBar`).
-        /// </remarks>
-        protected override void OnKeyDown(KeyEventArgs e)
-        {
-            if (e.Control && e.KeyCode == Keys.F)
-                _searchToolBar?.Visible = _searchToolBar?.Visible == false;
-            base.OnKeyDown(e);
-        }
-
-        /// <summary>
         /// Handles the <see cref="System.Windows.Forms.DataGridView.ColumnStateChanged"/> event for the KryptonOutlookGrid.
         /// </summary>
         /// <param name="e">A <see cref="DataGridViewColumnStateChangedEventArgs"/> that contains the event data.</param>
@@ -5438,9 +5584,9 @@ namespace Krypton.Toolkit
         /// </remarks>
         protected override void OnColumnStateChanged(DataGridViewColumnStateChangedEventArgs e)
         {
-            _searchToolBar?.SetColumns(this.Columns);
             if (e.StateChanged == DataGridViewElementStates.Visible)
             {
+                _searchToolBar?.SetColumns(this.Columns);
                 _summaryGrid?.Columns[e.Column.Index].Visible = this.Columns[e.Column.Index].Visible;
             }
             base.OnColumnStateChanged(e);
@@ -5680,6 +5826,25 @@ namespace Krypton.Toolkit
             return null; // No matching cell found
         }
 
+
+        /// <summary>
+        /// Clears the search toolbar filter and applies the updated filter.
+        /// </summary>
+        /// <remarks>
+        /// If a filter is currently active in the search toolbar, this method will
+        /// reset it by setting the <see cref="ToolBarFilters"/> property to <c>null</c>.
+        /// After clearing the filter, <see cref="ApplyFilter"/> is called to refresh the
+        /// displayed data based on the cleared filter criteria.
+        /// </remarks>
+        public void ClearSearchToolBarFilter()
+        {
+            if (ToolBarFilters != null)
+            {
+                ToolBarFilters = null;
+                ApplyFilter();
+            }
+        }
+
         #endregion Find ToolBar
 
         #region Adjust Columns Width
@@ -5721,11 +5886,11 @@ namespace Krypton.Toolkit
             if (additionalPadding < 0) throw new ArgumentOutOfRangeException(nameof(additionalPadding), "Additional padding must be non-negative.");
 
             // Dynamically determine the vertical scrollbar width
-            int actualVScrollbarWidth = 0;
+            int actualVScrollbarWidth = 10;
             VScrollBar? vScrollBar = this.Controls.OfType<VScrollBar>().FirstOrDefault();
             if (vScrollBar != null && vScrollBar.Visible)
             {
-                actualVScrollbarWidth = vScrollBar.Width + 5;
+                actualVScrollbarWidth += vScrollBar.Width;
             }
 
             // Calculate total width of all visible columns
@@ -5751,6 +5916,12 @@ namespace Krypton.Toolkit
                     column.Width = Convert.ToInt32(column.Width * adjustmentRatio);
                 }
                 this.ResumeLayout();
+                if (_summaryGrid != null && _summaryGrid.Rows.Count > 0)
+                {
+                    var sHeight = (_summaryGrid!.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
+                    _summaryGrid.Height = sHeight;
+                    _summaryGrid.Invalidate();
+                }
             }
         }
 
