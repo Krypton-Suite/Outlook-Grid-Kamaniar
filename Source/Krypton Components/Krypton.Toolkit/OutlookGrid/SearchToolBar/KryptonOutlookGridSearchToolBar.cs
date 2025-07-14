@@ -262,12 +262,28 @@ namespace Krypton.Toolkit
 
         #region class properties
 
+        private PaletteBase? _palette;
+        private PaletteRedirect _paletteRedirect;
+        private PaletteBorderInheritRedirect _paletteBorder;
+        private PaletteBorder _border;
+
         private DataGridViewColumnCollection? _columnsList;
 
         private const bool BUTTON_CLOSE_ENABLED = false;
 
         #endregion
 
+
+        #region Public Properties
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the border should be painted.
+        /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        [DefaultValue(false)]
+        public bool PaintBorder { get; set; } = false;
+
+        #endregion Public Properties
 
         #region translations
 
@@ -326,6 +342,24 @@ namespace Krypton.Toolkit
             }
 
             comboBox_columns!.SelectedIndex = 0;
+
+            // Cache the current global palette setting
+            _palette = KryptonManager.CurrentGlobalPalette;
+
+            // Hook into palette events
+            if (_palette != null)
+            {
+                _palette.PalettePaint += OnPalettePaint;
+            }
+
+            // (4) We want to be notified whenever the global palette changes
+            KryptonManager.GlobalPaletteChanged += OnGlobalPaletteChanged;
+
+            // Create redirection object to the base palette
+            _paletteRedirect = new PaletteRedirect(_palette);
+            _paletteBorder = new PaletteBorderInheritRedirect(_paletteRedirect);
+            // Create storage that maps onto the inherit instances
+            _border = new PaletteBorder(_paletteBorder, null);
 
             // Use Krypton
             RenderMode = ToolStripRenderMode.ManagerRenderMode;
@@ -738,8 +772,59 @@ namespace Krypton.Toolkit
                 _translationsRefreshComponentTranslationsCheck = Translations;
                 RefreshComponentTranslations();
             }
+            if (PaintBorder)
+            {
+                if (_palette != null)
+                {
+                    // Get the renderer associated with this palette
+                    IRenderer renderer = _palette.GetRenderer();
 
+                    // Create the rendering context that is passed into all renderer calls
+                    using (RenderContext renderContext = new(this, e.Graphics, e.ClipRectangle, renderer))
+                    {
+                        _paletteBorder.Style = PaletteBorderStyle.HeaderPrimary;
+                        renderer.RenderStandardBorder.DrawBorder(renderContext, ClientRectangle, _border, VisualOrientation.Top, PaletteState.Normal);
+                    }
+                }
+            }
             base.OnPaint(e);
+        }
+
+        /// <summary>
+        /// Handles OnPalettePaint Event
+        /// </summary>
+        /// <param name="sender">Source of the event.</param>
+        /// <param name="e">A PaletteLayoutEventArgs that contains the event data.</param>
+        private void OnPalettePaint(object? sender, PaletteLayoutEventArgs e)
+        {
+            Invalidate();
+        }
+
+        /// <summary>
+        /// Handles OnGlobalPaletteChanged event
+        /// </summary>
+        /// <param name="sender">Source of the event.</param>
+        /// <param name="e">A EventArgs that contains the event data.</param>
+        private void OnGlobalPaletteChanged(object? sender, EventArgs e)
+        {
+            // (5) Unhook events from old palette
+            if (_palette != null)
+            {
+                _palette.PalettePaint -= OnPalettePaint;
+            }
+
+            // (6) Cache the new IPalette that is the global palette
+            _palette = KryptonManager.CurrentGlobalPalette;
+            _paletteRedirect.Target = _palette; //!!!!!!
+
+            // (7) Hook into events for the new palette
+            if (_palette != null)
+            {
+                _palette.PalettePaint += OnPalettePaint;
+            }
+
+            // (8) Change of palette means we should repaint to show any changes
+            Invalidate();
         }
 
         #endregion
