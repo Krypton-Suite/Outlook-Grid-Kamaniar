@@ -327,6 +327,39 @@ internal static class HelperExtensions
         return Enum.TryParse(value, out T result) ? result : throw new ArgumentException($"Invalid value for enum {typeof(T)}.");
     }
 
+    /// <summary>
+    /// Infers the "best" common type from a list of types. Prioritizes specific types (numeric, bool, DateTime)
+    /// before falling back to string or a common base class.
+    /// </summary>
+    public static Type InferCommonType(this List<Type> types)
+    {
+        if (types == null || types.Count == 0) return typeof(string); // Default if no types
+        if (types.Count == 1) return types[0]; // If only one type, use it
+
+        // Remove nullables to simplify inference
+        types = types.Select(t => Nullable.GetUnderlyingType(t) ?? t).Where(t => t != null).ToList();
+        if (!types.Any()) return typeof(string);
+
+        // Check for specific type categories
+        if (types.All(t => t.IsInteger())) return typeof(int); // Smallest common integer for display
+        if (types.All(t => t.IsInteger() || t.IsDouble() || t == typeof(decimal))) return typeof(double); // Widest common numeric
+        if (types.All(t => t == typeof(bool))) return typeof(bool);
+        if (types.All(t => t == typeof(DateTime))) return typeof(DateTime);
+        if (types.Any(t => t == typeof(string))) return typeof(string); // If any string, fall back to string
+
+        // Try to find a common base type for complex objects
+        Type commonBase = types.First();
+        foreach (var type in types.Skip(1))
+        {
+            while (commonBase != null && !commonBase.IsAssignableFrom(type))
+            {
+                commonBase = commonBase.BaseType!;
+            }
+            if (commonBase == null) break;
+        }
+        return commonBase ?? typeof(string); // Fallback to string if no common base is found
+    }
+
     #region Generate Sql Filter String
 
     /// <summary>

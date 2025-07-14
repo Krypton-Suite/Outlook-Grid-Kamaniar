@@ -11,8 +11,8 @@ namespace Krypton.Toolkit
     /// providing out-of-the-box grouping and searching capabilities for the wrapped grid.
     /// It manages the layout and initial configuration of its child controls.
     /// </remarks>
-    [Designer(typeof(KryptonExtraGridDesigner))]
-    public class KryptonExtraGrid : KryptonHeaderGroup
+    [Designer(typeof(KryptonAllInOneGridDesigner))]
+    public class KryptonAllInOneGrid : KryptonHeaderGroup
     {
 
         #region Private Variables
@@ -54,28 +54,6 @@ namespace Krypton.Toolkit
         /// </remarks>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         internal KryptonOutlookGridSearchToolBar SearchToolBar { get; set; } = default!;
-
-        /// <summary>
-        /// Gets or sets the top border edge of the control.
-        /// </summary>
-        /// <remarks>
-        /// This property represents a <see cref="KryptonBorderEdge"/> control used to render
-        /// the top border of the component. It is marked as hidden from the designer's
-        /// serialization process.
-        /// </remarks>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        internal KryptonBorderEdge BorderTop { get; set; } = default!;
-
-        /// <summary>
-        /// Gets or sets the bottom border edge of the control.
-        /// </summary>
-        /// <remarks>
-        /// This property represents a <see cref="KryptonBorderEdge"/> control used to render
-        /// the bottom border of the component. It is marked as hidden from the designer's
-        /// serialization process.
-        /// </remarks>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        internal KryptonBorderEdge BorderBottom { get; set; } = default!;
 
         #endregion Private Variables
 
@@ -208,7 +186,7 @@ namespace Krypton.Toolkit
         #region Identity
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="KryptonExtraGrid"/> class.
+        /// Initializes a new instance of the <see cref="KryptonAllInOneGrid"/> class.
         /// </summary>
         /// <remarks>
         /// This constructor sets up the initial state and layout of the composite control.
@@ -217,7 +195,7 @@ namespace Krypton.Toolkit
         /// It also establishes event subscriptions, such as `OnSearchCompleted` from the <see cref="OutlookGrid"/>
         /// to update the header based on search text.
         /// </remarks>
-        public KryptonExtraGrid()
+        public KryptonAllInOneGrid()
         {
             this.ValuesPrimary.Image = null;
             this.HeaderVisibleSecondary = false;
@@ -227,8 +205,6 @@ namespace Krypton.Toolkit
             GroupBox = new KryptonOutlookGridGroupBox();
             SummaryGrid = new KryptonOutlookGrid();
             OutlookGrid = new KryptonOutlookGrid();
-            BorderTop = new KryptonBorderEdge();
-            BorderBottom = new KryptonBorderEdge();
 
             // Initialize GroupBox control
             GroupBox.Name = "GroupBox";
@@ -260,23 +236,11 @@ namespace Krypton.Toolkit
             OutlookGrid.SearchToolBar = SearchToolBar;
             OutlookGrid.EnableSearchOnKeyPress = true;
 
-            // Initialize BorderEdge Top
-            BorderTop.Dock = DockStyle.Top;
-            BorderTop.Name = "BorderTop";
-            BorderTop.Text = "BorderEdgeTop";
-
-            // Initialize BorderEdge Bottom
-            BorderBottom.Dock = DockStyle.Bottom;
-            BorderBottom.Name = "BorderBottom";
-            BorderBottom.Text = "BorderEdgeBottom";
-
             // Add controls to the Panel of the KryptonHeaderGroup in desired Z-order
             this.Panel.Controls.Add(OutlookGrid);
-            this.Panel.Controls.Add(BorderTop);
             this.Panel.Controls.Add(SearchToolBar);
             this.Panel.Controls.Add(GroupBox);
             this.Panel.Controls.Add(SummaryGrid);
-            this.Panel.Controls.Add(BorderBottom);
 
             // Register events after controls are set up
             OutlookGrid.RegisterGroupBoxEvents();

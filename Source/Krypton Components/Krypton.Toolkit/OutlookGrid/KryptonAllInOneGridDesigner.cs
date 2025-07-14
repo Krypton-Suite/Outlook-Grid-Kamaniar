@@ -4,9 +4,9 @@
     /// Provides a designer for the KryptonExtraGrid control, ensuring
     /// internal controls are designable but not directly removable.
     /// </summary>
-    internal class KryptonExtraGridDesigner : KryptonHeaderGroupDesigner
+    internal class KryptonAllInOneGridDesigner : KryptonHeaderGroupDesigner
     {
-        private KryptonExtraGrid? _extraGrid;
+        private KryptonAllInOneGrid? _extraGrid;
 
         #region Public
 
@@ -22,7 +22,7 @@
 
             Debug.Assert(component != null);
 
-            _extraGrid = component as KryptonExtraGrid;
+            _extraGrid = component as KryptonAllInOneGrid;
 
             if (_extraGrid != null && _extraGrid.OutlookGrid != null)
             {
@@ -41,19 +41,10 @@
 
                 if (_extraGrid != null)
                 {
-                    if (_extraGrid.OutlookGrid != null && !list.Contains(_extraGrid.OutlookGrid))
-                        list.Add(_extraGrid.OutlookGrid);
-
-                    if (_extraGrid.BorderTop != null && !list.Contains(_extraGrid.BorderTop))
-                        list.Add(_extraGrid.BorderTop);
-                    if (_extraGrid.SearchToolBar != null && !list.Contains(_extraGrid.SearchToolBar))
-                        list.Add(_extraGrid.SearchToolBar);
-                    if (_extraGrid.GroupBox != null && !list.Contains(_extraGrid.GroupBox))
-                        list.Add(_extraGrid.GroupBox);
-                    if (_extraGrid.SummaryGrid != null && !list.Contains(_extraGrid.SummaryGrid))
-                        list.Add(_extraGrid.SummaryGrid);
-                    if (_extraGrid.BorderBottom != null && !list.Contains(_extraGrid.BorderBottom))
-                        list.Add(_extraGrid.BorderBottom);
+                    list.Add(_extraGrid.OutlookGrid);
+                    list.Add(_extraGrid.SearchToolBar);
+                    list.Add(_extraGrid.GroupBox);
+                    list.Add(_extraGrid.SummaryGrid);
                 }
                 return list;
             }

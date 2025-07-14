@@ -49,6 +49,7 @@ namespace Krypton.Toolkit
         private PaletteBorderInheritRedirect _paletteBorder;
         //private PaletteContentInheritRedirect _paletteContent;
         private IDisposable? _mementoBack;
+        private PaletteBorder _border;
 
         private OutlookGridGroupCollection _groupCollection;     // List of Groups (of rows)
         private List<OutlookGridRow> _internalRows;              // List of Rows in order to keep them as is (without grouping,...)
@@ -176,6 +177,9 @@ namespace Krypton.Toolkit
             _paletteBack = new PaletteBackInheritRedirect(_paletteRedirect);
             _paletteBorder = new PaletteBorderInheritRedirect(_paletteRedirect);
             //_paletteContent = new PaletteContentInheritRedirect(_paletteRedirect);
+
+            // Create storage that maps onto the inherit instances
+            _border = new PaletteBorder(_paletteBorder, null);
 
             AllowUserToOrderColumns = false;  //we will handle it ourselves
             _hideColumnOnGrouping = false;
@@ -313,7 +317,6 @@ namespace Krypton.Toolkit
             set => _formatConditions = value;
         }
 
-
         /// <summary>
         /// Gets or sets a value indicating whether the lines are shown between nodes.
         /// </summary>
@@ -365,6 +368,22 @@ namespace Krypton.Toolkit
 
             set => _rightToLeftLayout = value;
         }
+
+        /// <summary>
+        /// Gets access to the border palette details.
+        /// </summary>
+        [Category("Visuals")]
+        [Description("Overrides borders settings.")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
+        public PaletteBorder Border => _border;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the column context menu is allowed.
+        /// </summary>
+        [Category("Behavior")]
+        [Description("Indicates whether the context menu for columns is enabled.")]
+        [DefaultValue(true)]
+        public bool AllowColumnContextMenu { get; set; } = true;
 
         #endregion OutlookGrid property definitions
 
@@ -426,7 +445,7 @@ namespace Krypton.Toolkit
         protected override void OnCellBeginEdit(DataGridViewCellCancelEventArgs e)
         {
             OutlookGridRow row = (OutlookGridRow)Rows[e.RowIndex];
-            if (row.IsGroupRow)
+            if (row.IsGroupRow || row.IsSummaryRow)
             {
                 e.Cancel = true;
             }
@@ -681,10 +700,10 @@ namespace Krypton.Toolkit
 
                                     foreach (DataGridViewColumn col in listCol.OrderBy(x => x.DisplayIndex))
                                     {
-                                        Console.WriteLine($@"{col.Name} {col.DisplayIndex}");
+                                        Debug.WriteLine($@"{col.Name} {col.DisplayIndex}");
                                     }
 
-                                    Console.WriteLine(@"-----------------");
+                                    Debug.WriteLine(@"-----------------");
 
                                     //*************************************************
                                     //this.Columns.RemoveAt(DragDropSourceIndex);
@@ -803,7 +822,6 @@ namespace Krypton.Toolkit
                 if (row.IsIconHit(e))
                 {
                     row.Group?.Collapsed = !row.Group.Collapsed;
-
                     //this is a workaround to make the grid re-calculate it's contents and background bounds
                     // so the background is updated correctly.
                     // this will also invalidate the control, so it will redraw itself
@@ -822,12 +840,48 @@ namespace Krypton.Toolkit
                 else
                 {
                     InvalidateRow(e.RowIndex);
+                    CurrentCell = this[e.ColumnIndex, e.RowIndex];
                 }
             }
             else
             {
                 base.OnCellMouseDown(e);
             }
+        }
+
+        protected override void OnCurrentCellChanged(EventArgs e)
+        {
+            // Get the newly selected row (if any)
+            DataGridViewRow? currentRow = CurrentCell?.OwningRow;
+            int newRowIndex = currentRow?.Index ?? -1;
+
+            // Check if a previous group row was selected AND
+            // if the current selection is different from the previously selected group row.
+            if (_previousGroupRowSelected != -1 && _previousGroupRowSelected != newRowIndex)
+            {
+                // Ensure the previous group row index is still valid within the Rows collection
+                if (_previousGroupRowSelected < Rows.Count && Rows[_previousGroupRowSelected] is OutlookGridRow previousOutlookRow)
+                {
+                    // Invalidate the previously selected group row to ensure it redraws without selection.
+                    // You might also need to clear specific selection states if they are being held.
+                    InvalidateRow(_previousGroupRowSelected);
+                }
+                // Reset the tracker after invalidating the old row
+                _previousGroupRowSelected = -1;
+            }
+
+            // Now, if the *new* current row is a group row, update _previousGroupRowSelected
+            // and handle clearing selection if that's still desired for group rows on navigation.
+            if (currentRow is OutlookGridRow currentOutlookRow && currentOutlookRow.IsGroupRow)
+            {
+                // If the user navigates *onto* a group row with the keyboard,
+                // you might still want to clear the selection or prevent it from being selected visually.
+                // This depends on your desired UX.
+                ClearSelection(); // Clear existing selections
+                _previousGroupRowSelected = newRowIndex;
+                InvalidateRow(newRowIndex); // Invalidate the new group row to ensure it's drawn correctly (e.g., without standard selection highlight)
+            }
+            base.OnCurrentCellChanged(e);
         }
 
         /// <summary>
@@ -841,7 +895,7 @@ namespace Krypton.Toolkit
             if (e.ColumnIndex > -1)
             {
                 //this handle when _internalColumns is null or empty grid fill without internalColumns restrict outlookGrid behavior. 
-                if (_internalColumns == null || _internalColumns.Count == 0)
+                if (_internalColumns == null || _internalColumns.Count == 0 || !AllowColumnContextMenu)
                 {
                     base.OnColumnHeaderMouseClick(e);
                     return;
@@ -899,18 +953,6 @@ namespace Krypton.Toolkit
             base.OnColumnHeaderMouseClick(e);
         }
 
-        //protected override void OnColumnAdded(DataGridViewColumnEventArgs e)
-        //{
-        //    var header = new FilterColumnHeaderCell();
-        //   // header.FilterButtonClicked += new EventHandler<ColumnFilterClickedEventArg>(header_FilterButtonClicked);
-        //    e.Column.HeaderCell = header;
-
-
-        //    base.OnColumnAdded(e);
-        //}
-
-
-
         /// <summary>
         /// Raises the <see cref="E:CellFormatting" /> event.
         /// </summary>
@@ -924,6 +966,25 @@ namespace Krypton.Toolkit
             }
 
             base.OnCellFormatting(e);
+        }
+
+        /// <summary>
+        /// Overrides the paint event
+        /// </summary>
+        /// <param name="e">PaintEventArgs</param>
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            if (_palette != null)
+            {
+                IRenderer renderer = _palette.GetRenderer();
+
+                using (RenderContext renderContext = new(this, e.Graphics, e.ClipRectangle, renderer))
+                {
+                    _paletteBorder.Style = PaletteBorderStyle.HeaderPrimary;
+                    renderer.RenderStandardBorder.DrawBorder(renderContext, ClientRectangle, _border, VisualOrientation.Top, PaletteState.Normal);
+                }
+            }
         }
 
         #endregion
@@ -1354,7 +1415,7 @@ namespace Krypton.Toolkit
                 throw new ArgumentNullException(nameof(e));
             }
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives ColumnSortChangedEvent : " + e.Column.Name + @" " + e.Column.SortDirection);
+            Debug.WriteLine(@"OutlookGrid - Receives ColumnSortChangedEvent : " + e.Column.Name + @" " + e.Column.SortDirection);
 #endif
             _internalColumns[e.Column.Name!]!.SortDirection = e.Column.SortDirection;
             _internalColumns[e.Column.Name!]!.DataGridViewColumn!.HeaderCell.SortGlyphDirection = e.Column.SortDirection;
@@ -1372,7 +1433,7 @@ namespace Krypton.Toolkit
             //We fill again the grid with the new Grouping info
             Fill();
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives ColumnGroupAddedEvent : " + e.Column.Name);
+            Debug.WriteLine(@"OutlookGrid - Receives ColumnGroupAddedEvent : " + e.Column.Name);
 #endif
         }
 
@@ -1387,7 +1448,7 @@ namespace Krypton.Toolkit
             //We fill again the grid with the new Grouping info
             Fill();
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives ColumnGroupRemovedEvent : " + e.Column.Name);
+            Debug.WriteLine(@"OutlookGrid - Receives ColumnGroupRemovedEvent : " + e.Column.Name);
 #endif
         }
 
@@ -1400,7 +1461,7 @@ namespace Krypton.Toolkit
         {
             ClearGroups();
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives ClearGroupingEvent");
+            Debug.WriteLine(@"OutlookGrid - Receives ClearGroupingEvent");
 #endif
         }
 
@@ -1413,7 +1474,7 @@ namespace Krypton.Toolkit
         {
             CollapseAll();
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives FullCollapseEvent");
+            Debug.WriteLine(@"OutlookGrid - Receives FullCollapseEvent");
 #endif
         }
 
@@ -1426,7 +1487,7 @@ namespace Krypton.Toolkit
         {
             ExpandAll();
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives FullExpandEvent");
+            Debug.WriteLine(@"OutlookGrid - Receives FullExpandEvent");
 #endif
         }
 
@@ -1439,7 +1500,7 @@ namespace Krypton.Toolkit
         {
             Expand(e.Column.Name);
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives GridGroupExpandEvent");
+            Debug.WriteLine(@"OutlookGrid - Receives GridGroupExpandEvent");
 #endif
         }
 
@@ -1447,7 +1508,7 @@ namespace Krypton.Toolkit
         {
             Collapse(e.Column.Name);
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives GridGroupCollapseEvent");
+            Debug.WriteLine(@"OutlookGrid - Receives GridGroupCollapseEvent");
 #endif
         }
 
@@ -1458,7 +1519,7 @@ namespace Krypton.Toolkit
             Fill(); //to reflect the changes
             ForceRefreshGroupBox();
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives ColumnGroupIndexChangedEvent");
+            Debug.WriteLine(@"OutlookGrid - Receives ColumnGroupIndexChangedEvent");
 #endif
         }
 
@@ -1469,7 +1530,7 @@ namespace Krypton.Toolkit
                 (e.Column.GroupingType as OutlookGridDateTimeGroup)!.Interval;
             Fill();
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives GroupIntervalClickEvent");
+            Debug.WriteLine(@"OutlookGrid - Receives GroupIntervalClickEvent");
 #endif
         }
 
@@ -1485,7 +1546,7 @@ namespace Krypton.Toolkit
             }
             Fill();
 #if DEBUG
-            Console.WriteLine(@"OutlookGrid - Receives SortBySummaryCountEvent");
+            Debug.WriteLine(@"OutlookGrid - Receives SortBySummaryCountEvent");
 #endif
         }
 
@@ -2327,6 +2388,12 @@ namespace Krypton.Toolkit
                     _menuSeparator5!.Visible = false;
                     _menuConditionalFormatting!.Visible = false;
                 }
+
+                foreach (KryptonContextMenuCheckBox item in _menuVisibleColumns.Items.Cast<KryptonContextMenuCheckBox>())
+                {
+                    item.Visible = _internalColumns[item.Tag.ToInteger()]!.AvailableInContextMenu;
+                }
+
                 _menuAggregationNumeric.Visible = (ShowSubTotal || ShowGrandTotal) && clickedDgvColumn.IsNumericColumn();
                 _menuAggregationNonNumeric.Visible = (ShowSubTotal || ShowGrandTotal) && !_menuAggregationNumeric.Visible;
                 if (_menuAggregationNumeric.Visible)
@@ -2626,7 +2693,7 @@ namespace Krypton.Toolkit
         //        }
         //    }
         //    //sw.Stop();
-        //    //Console.WriteLine(sw.ElapsedMilliseconds.ToString() + " ms" + r.ToString());
+        //    //Debug.WriteLine(sw.ElapsedMilliseconds.ToString() + " ms" + r.ToString());
 
         //}
 
@@ -2944,7 +3011,7 @@ namespace Krypton.Toolkit
             //End of Formatting
 #if DEBUG
             azer.Stop();
-            Console.WriteLine(@"Formatting : " + azer.ElapsedMilliseconds + @" ms");
+            Debug.WriteLine(@"Formatting : " + azer.ElapsedMilliseconds + @" ms");
             azer.Start();
 #endif
             // this block is used of grouping is turned off
@@ -2960,10 +3027,11 @@ namespace Krypton.Toolkit
                 //Add rows to underlying DataGridView
                 if (_fillMode == GridFillMode.GroupsOnly)
                 {
-                    if (list != null)
+                    tmp = list;
+                    /*if (list != null)
                     {
                         Rows.AddRange(list.ToArray());
-                    }
+                    }*/
                 }
                 else
                 {
@@ -2971,10 +3039,10 @@ namespace Krypton.Toolkit
                     NonGroupedRecursiveFillOutlookGridRows(list, tmp);
 
                     //Add all the rows to the grid
-                    if (tmp != null)
+                    /*if (tmp != null)
                     {
                         Rows.AddRange(tmp.ToArray());
-                    }
+                    }*/
                 }
 
             }
@@ -3090,7 +3158,7 @@ namespace Krypton.Toolkit
                 RecursiveFillOutlookGridRows(_groupCollection, tmp);
 
                 //Finally add the rows to underlying DataGridView after all the magic !
-                Rows.AddRange(tmp.ToArray());
+                //Rows.AddRange(tmp.ToArray());
             }
 
             if (tmp != null)
@@ -3104,14 +3172,12 @@ namespace Krypton.Toolkit
                     var row = CreateSummaryRow(null, tmp.Where(r => !r.IsGroupRow && !r.IsSummaryRow).ToList(), firstColumnIndex);
                     if (_summaryGrid != null)
                     {
-                        SetSummaryGrid();
+                        ResetSummaryGrid();
                         var sRow = (OutlookGridRow)row.Clone()!;
                         sRow.IsSummaryRow = true;
                         sRow.CreateCells(_summaryGrid!, row.Cells.Cast<DataGridViewCell>().Select(c => c.Value).ToArray()!);
                         _summaryGrid.Rows.Add(sRow);
-                        var sHeight = sRow.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
-                        _summaryGrid.Height = sHeight;
-                        _summaryGrid.ClearSelection();
+                        AdjustSummaryGridHeight();
                     }
                     else
                     {
@@ -3122,11 +3188,13 @@ namespace Krypton.Toolkit
                 {
                     _summaryGrid?.Visible = false;
                 }
+                Rows.AddRange(tmp.ToArray());
             }
+
             Cursor.Current = Cursors.Default;
 #if DEBUG
             azer.Stop();
-            Console.WriteLine(@"FillGrid : " + azer.ElapsedMilliseconds + @" ms");
+            Debug.WriteLine(@"FillGrid : " + azer.ElapsedMilliseconds + @" ms");
 #endif
         }
 
@@ -3161,7 +3229,7 @@ namespace Krypton.Toolkit
                 }
                 //else
                 //{
-                //    Console.WriteLine("groupCollection[i].Rows" + groupCollection[i].Rows.Count.ToString());
+                //    Debug.WriteLine("groupCollection[i].Rows" + groupCollection[i].Rows.Count.ToString());
                 //    //We sort the rows according to the group sort (useful for alphabetic for example)
                 //    groupCollection[i].Rows.Sort(new OutlookGridRowComparer(groupCollection[i].Column.DataGridViewColumn.Index, internalColumns[groupCollection[i].Column.DataGridViewColumn.Name].SortDirection));
                 //}
@@ -3250,38 +3318,6 @@ namespace Krypton.Toolkit
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// Recursively retrieves all data rows (non-group and non-summary rows) belonging to the current group
-        /// and all its descendant child groups. This method uses an iterative approach for recursion.
-        /// </summary>
-        /// <param name="currentGroup">The current <see cref="IOutlookGridGroup"/> to start collecting rows from.</param>
-        /// <returns>A <see cref="List{T}"/> of <see cref="OutlookGridRow"/> objects that are data rows within the specified group hierarchy.</returns>
-        internal static List<OutlookGridRow> GetAllRowsRecursiveLinq(IOutlookGridGroup? currentGroup)
-        {
-            if (currentGroup == null)
-            {
-                return [];
-            }
-
-            // Initialize with the *direct data rows* of the current group.
-            // Important: Filter out group rows and summary rows to only include actual data entries.
-            var allDataRows = (currentGroup.Rows ?? Enumerable.Empty<OutlookGridRow>())
-                              .Where(r => !r.IsGroupRow && !r.IsSummaryRow)
-                              .ToList(); // Convert to list to make AddRange efficient
-
-            // Recursively collect data rows from all children.
-            // Iterates through the actual list of child groups.
-            if (currentGroup.Children.List != null && currentGroup.Children.List.Count > 0)
-            {
-                foreach (var childGroup in currentGroup.Children.List)
-                {
-                    // Recursively call for each child group and add their collected data rows to the main list.
-                    allDataRows.AddRange(GetAllRowsRecursiveLinq(childGroup));
-                }
-            }
-            return allDataRows;
         }
 
         /// <summary>
@@ -3940,6 +3976,554 @@ namespace Krypton.Toolkit
         }
 
         /// <summary>
+        /// Sets the data source for the KryptonOutlookGrid, manually generating OutlookGridRow instances
+        /// from various supported data source types. This method consolidates all specific SetDataSource overloads.
+        /// </summary>
+        /// <param name="dataSource">The data source (e.g., DataTable, List&lt;T&gt;, BindingSource, Array, List&lt;object[]&gt;, List&lt;Dictionary&lt;string, object&gt;&gt;).</param>
+        /// <remarks>
+        /// This method manages column auto-generation and manual row population, providing granular control
+        /// over the grid's display while supporting common .NET data collection types. It also triggers
+        /// <see cref="OnGridColumnCreating"/> and <see cref="OnInternalColumnCreating"/> events for customization.
+        /// </remarks>
+        public void SetDataSource(object? dataSource)
+        {
+            ClearEverythingOnSetDataSource();
+            SuspendLayout();
+            AutoGenerateKryptonColumns = false;
+
+            List<OutlookGridRow> generatedRows = [];
+
+            try
+            {
+                IEnumerable? dataItems = null;
+                Type? itemType = null; // The type of a single element in the data collection
+
+                // --- 1. Identify the actual enumerable data and infer item type ---
+                if (dataSource == null)
+                {
+                    return;
+                }
+                else if (dataSource is BindingSource bindingSource)
+                {
+                    // First, try to get the most specific list from the BindingSource
+                    dataItems = bindingSource.List;
+
+                    if (bindingSource.DataSource != null)
+                    {
+                        Type bsSourceType = bindingSource.DataSource.GetType();
+
+                        // Specific handling for DataSet with DataMember
+                        if (bindingSource.DataSource is System.Data.DataSet dataSet && !string.IsNullOrEmpty(bindingSource.DataMember))
+                        {
+                            if (dataSet.Tables.Contains(bindingSource.DataMember))
+                            {
+                                // If it's a specific table from a DataSet, the item type is DataRow
+                                itemType = typeof(System.Data.DataRow);
+                                // Also, directly set dataItems to the DataView for that table for consistency
+                                dataItems = dataSet.Tables[bindingSource.DataMember]!.DefaultView;
+                            }
+                            else if (dataSet.Relations.Contains(bindingSource.DataMember))
+                            {
+                                // If it's a relation, the item type would typically be DataRowView from the child table
+                                // This scenario is more complex for direct row population and usually requires nested grids.
+                                // For a flat grid, we assume it's a table name.
+                                Debug.WriteLine($"Warning: BindingSource.DataMember '{bindingSource.DataMember}' refers to a DataRelation, which is not directly supported for flat grid population.");
+                                itemType = typeof(System.Data.DataRowView); // Still infer DataRowView if possible from the list
+                            }
+                        }
+                        // Direct DataTable, DataView, List<T>, Array, etc.
+                        else if (bsSourceType == typeof(System.Data.DataTable))
+                        {
+                            itemType = typeof(System.Data.DataRow);
+                        }
+                        else if (bsSourceType == typeof(System.Data.DataView))
+                        {
+                            itemType = typeof(System.Data.DataRowView);
+                        }
+                        else if (bsSourceType.IsGenericType && bsSourceType.GetGenericTypeDefinition() == typeof(List<>))
+                        {
+                            itemType = bsSourceType.GetGenericArguments()[0];
+                        }
+                        else if (bsSourceType.IsArray)
+                        {
+                            itemType = bsSourceType.GetElementType();
+                        }
+                        else
+                        {
+                            // Fallback: Infer type from the first item in the BindingSource's list
+                            itemType = bindingSource.List.Cast<object>().FirstOrDefault()?.GetType();
+                        }
+                    }
+                    // If DataMember was not used or didn't resolve to a table, and list is not empty,
+                    // try to infer from the list's first item.
+                    if (itemType == null && bindingSource.List != null && bindingSource.List.Count > 0)
+                    {
+                        itemType = bindingSource.List[0]?.GetType();
+                    }
+                }
+                else if (dataSource is System.Data.DataTable dataTable)
+                {
+                    dataItems = dataTable.Rows;
+                    itemType = typeof(System.Data.DataRow);
+                }
+                else if (dataSource is System.Data.DataView dataView) // Directly binding a DataView
+                {
+                    dataItems = dataView;
+                    itemType = typeof(System.Data.DataRowView);
+                }
+
+                if (dataSource is System.Data.DataSet dataSetDirect)
+                {
+                    // Check if DataGridView.DataMember is specified and refers to a valid table
+                    if (!string.IsNullOrEmpty(this.DataMember) && dataSetDirect.Tables.Contains(this.DataMember))
+                    {
+                        dataItems = dataSetDirect.Tables[this.DataMember]!.DefaultView;
+                        itemType = typeof(System.Data.DataRowView);
+                    }
+                    // Check if DataGridView.DataMember is specified and refers to a valid relation (handle as a warning/debug)
+                    else if (!string.IsNullOrEmpty(this.DataMember) && dataSetDirect.Relations.Contains(this.DataMember))
+                    {
+                        Debug.WriteLine($"Warning: DataGridView.DataMember '{this.DataMember}' refers to a DataRelation. This is not directly supported for flat grid population; consider setting DataMember to a specific table name.");
+                        // Fallback to the first table if a relation is specified, as flat grids don't directly show relations.
+                        if (dataSetDirect.Tables.Count > 0)
+                        {
+                            dataItems = dataSetDirect.Tables[0].DefaultView;
+                            itemType = typeof(System.Data.DataRowView);
+                            Debug.WriteLine("Warning: Falling back to displaying the first table as DataMember referred to a relation.");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("Info: DataSet is empty, no tables to display.");
+                            return; // Or handle as appropriate if no data
+                        }
+                    }
+                    // If DataGridView.DataMember is not specified, or doesn't match a table/relation,
+                    // then we default to the first table in the DataSet.
+                    else if (dataSetDirect.Tables.Count > 0)
+                    {
+                        dataItems = dataSetDirect.Tables[0].DefaultView; // Default to first table's default view
+                        itemType = typeof(System.Data.DataRowView);
+                        Debug.WriteLine("Warning: DataGridView.DataMember was not specified or did not match a table/relation. Displaying the first table.");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("Info: DataSet is empty, no tables to display.");
+                        return; // Or handle as appropriate if no data
+                    }
+                }
+                else if (dataSource is IListSource listSource) // E.g., DataSet implements IListSource
+                {
+                    dataItems = listSource.GetList();
+                    if (dataItems is System.Data.DataView dvFromListSource)
+                    {
+                        itemType = typeof(System.Data.DataRowView);
+                    }
+                    else if (dataItems is IBindingList blist && blist.Count > 0)
+                    {
+                        itemType = blist[0]?.GetType();
+                    }
+                    else if (dataItems is IList list && list.Count > 0) // <--- This handles non-generic IList as well
+                    {
+                        itemType = list[0]?.GetType();
+                    }
+                }
+                else if (dataSource is IBindingList bindingList) // E.g., BindingList<T>
+                {
+                    dataItems = bindingList;
+                    if (bindingList.GetType().IsGenericType && bindingList.GetType().GetGenericTypeDefinition() == typeof(BindingList<>))
+                    {
+                        itemType = bindingList.GetType().GetGenericArguments()[0];
+                    }
+                    else if (bindingList.Count > 0)
+                    {
+                        itemType = bindingList[0]?.GetType();
+                    }
+                }
+                else if (dataSource is IList list) // E.g., List<T>, Array (T[] also implements IList)
+                {
+                    dataItems = list;
+                    if (list.GetType().IsGenericType && list.GetType().GetGenericTypeDefinition() == typeof(List<>))
+                    {
+                        itemType = list.GetType().GetGenericArguments()[0];
+                    }
+                    else if (list.GetType().IsArray)
+                    {
+                        itemType = list.GetType().GetElementType();
+                    }
+                    else if (list.Count > 0) // <--- This is the crucial check for non-generic IList or unknown generic types
+                    {
+                        itemType = list[0]?.GetType();
+                    }
+                }
+                else if (dataSource is IEnumerable enumerable) // General IEnumerable, last resort
+                {
+                    dataItems = enumerable;
+                    itemType = enumerable.Cast<object>().FirstOrDefault()?.GetType();
+                }
+                else
+                {
+                    Debug.WriteLine($"KryptonOutlookGrid.SetDataSource: Unsupported DataSource type: {dataSource.GetType().Name}");
+                    return;
+                }
+
+                // --- 2. Column Generation (if AutoGenerateColumns is enabled and no columns exist) ---
+                if (AutoGenerateColumns && Columns.Count == 0 && dataItems != null)
+                {
+                    System.Data.DataTable? schemaTable = null;
+
+                    // Priority 1: Directly from DataTable/DataView
+                    if (dataSource is System.Data.DataTable dtDirect)
+                    {
+                        schemaTable = dtDirect;
+                    }
+                    else if (dataSource is System.Data.DataView dvDirect)
+                    {
+                        schemaTable = dvDirect.Table;
+                    }
+                    // Priority 2: From BindingSource, respecting DataMember for DataSet
+                    else if (dataSource is BindingSource bindingSourceForSchema)
+                    {
+                        if (bindingSourceForSchema.DataSource is System.Data.DataSet dataSetForSchema && !string.IsNullOrEmpty(bindingSourceForSchema.DataMember))
+                        {
+                            if (dataSetForSchema.Tables.Contains(bindingSourceForSchema.DataMember))
+                            {
+                                schemaTable = dataSetForSchema.Tables[bindingSourceForSchema.DataMember];
+                            }
+                        }
+                        else if (bindingSourceForSchema.DataSource is System.Data.DataTable dataTableFromBS)
+                        {
+                            schemaTable = dataTableFromBS;
+                        }
+                        else if (bindingSourceForSchema.DataSource is System.Data.DataView dataViewFromBS)
+                        {
+                            schemaTable = dataViewFromBS.Table;
+                        }
+                        // Fallback: If BindingSource's list items are DataRowView, get table from current item
+                        else if (bindingSourceForSchema.Current is System.Data.DataRowView drvFromBS)
+                        {
+                            schemaTable = drvFromBS.DataView.Table;
+                        }
+                    }
+                    // Priority 3: From the first item of the inferred dataItems if it's DataRow/DataRowView
+                    else if (itemType == typeof(System.Data.DataRow) && dataItems?.Cast<System.Data.DataRow>().FirstOrDefault()?.Table is System.Data.DataTable firstRowTable)
+                    {
+                        schemaTable = firstRowTable;
+                    }
+                    else if (itemType == typeof(System.Data.DataRowView) && dataItems?.Cast<System.Data.DataRowView>().FirstOrDefault()?.DataView.Table is System.Data.DataTable firstRowViewTable)
+                    {
+                        schemaTable = firstRowViewTable;
+                    }
+
+
+                    if (schemaTable != null)
+                    {
+                        foreach (System.Data.DataColumn column in schemaTable.Columns)
+                        {
+                            DataGridViewColumn col = CreateGridColumn(column.ColumnName, column.DataType);
+                            Columns.Add(col);
+                            if (AutoGenerateInternalColumns)
+                                AddInternalColumn(CreateInternalColumn(col));
+                        }
+                    }
+                    else if (itemType == typeof(object[]))
+                    {
+                        object[]? firstItemArray = dataItems!.Cast<object[]>().FirstOrDefault();
+                        if (firstItemArray != null)
+                        {
+                            int numberOfColumns = firstItemArray.Length;
+                            Type[] inferredColumnTypes = new Type[numberOfColumns];
+
+                            for (int colIndex = 0; colIndex < numberOfColumns; colIndex++)
+                            {
+                                List<Type> typesForThisColumn = new();
+                                foreach (object[] rowArray in dataItems!.Cast<object[]>())
+                                {
+                                    if (rowArray != null && colIndex < rowArray.Length && rowArray[colIndex] != null)
+                                    {
+                                        typesForThisColumn.Add(rowArray[colIndex].GetType());
+                                    }
+                                }
+                                inferredColumnTypes[colIndex] = typesForThisColumn.InferCommonType();
+
+                                DataGridViewColumn col = CreateGridColumn($"Column{colIndex}", inferredColumnTypes[colIndex]);
+                                Columns.Add(col);
+                                if (AutoGenerateInternalColumns)
+                                    AddInternalColumn(CreateInternalColumn(col));
+                            }
+                        }
+                    }
+                    else if (itemType == typeof(Dictionary<string, object>))
+                    {
+                        HashSet<string> allUniqueKeys = [];
+                        foreach (var rowDict in dataItems!.Cast<Dictionary<string, object>>())
+                        {
+                            if (rowDict != null) allUniqueKeys.UnionWith(rowDict.Keys);
+                        }
+
+                        //List<string> sortedKeys = allUniqueKeys.OrderBy(k => k).ToList();
+
+                        Dictionary<string, Type> inferredColumnTypesMap = [];
+                        //foreach (string key in sortedKeys)
+                        foreach (string key in allUniqueKeys)
+                        {
+                            List<Type> typesForThisColumn = [];
+                            foreach (var rowDict in dataItems!.Cast<Dictionary<string, object>>())
+                            {
+                                if (rowDict != null && rowDict.TryGetValue(key, out object? value) && value != null)
+                                {
+                                    typesForThisColumn.Add(value.GetType());
+                                }
+                            }
+                            inferredColumnTypesMap[key] = typesForThisColumn.InferCommonType();
+
+                            DataGridViewColumn col = CreateGridColumn(key, inferredColumnTypesMap[key]);
+                            Columns.Add(col);
+                            if (AutoGenerateInternalColumns)
+                                AddInternalColumn(CreateInternalColumn(col));
+                        }
+                    }
+                    else if (itemType != null && itemType != typeof(object)) // For List<T>, BindingList<T>, Arrays of T, custom objects
+                    {
+                        PropertyInfo[] properties = itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                        foreach (PropertyInfo prop in properties)
+                        {
+                            if (!prop.CanRead || prop.GetIndexParameters().Length > 0)
+                            {
+                                continue;
+                            }
+                            DataGridViewColumn col = CreateGridColumn(prop.Name, prop.PropertyType);
+                            Columns.Add(col);
+                            if (AutoGenerateInternalColumns)
+                                AddInternalColumn(CreateInternalColumn(col));
+                        }
+                    }
+                }
+
+                // --- 3. Cache column mappings for efficient cell population ---
+                Dictionary<int, PropertyInfo> gridColIndexToPropertyMap = [];
+                Dictionary<int, int> gridColIndexToDataTableColIndexMap = [];
+                Dictionary<int, string> gridColIndexToDictKeyMap = [];
+
+                if (itemType != null)
+                {
+                    System.Data.DataTable? currentSchemaTable = null;
+                    // Consistent schema table retrieval logic
+                    if (dataSource is System.Data.DataTable dtMap) currentSchemaTable = dtMap;
+                    else if (dataSource is System.Data.DataView dvMap) currentSchemaTable = dvMap.Table;
+                    else if (dataSource is BindingSource bsMap)
+                    {
+                        if (bsMap.DataSource is System.Data.DataSet dsMap && !string.IsNullOrEmpty(bsMap.DataMember))
+                        {
+                            if (dsMap.Tables.Contains(bsMap.DataMember)) currentSchemaTable = dsMap.Tables[bsMap.DataMember];
+                        }
+                        else if (bsMap.DataSource is System.Data.DataTable bsDtMap) currentSchemaTable = bsDtMap;
+                        else if (bsMap.DataSource is System.Data.DataView bsDvMap) currentSchemaTable = bsDvMap.Table;
+                        else if (bsMap.Current is System.Data.DataRowView drvMap) currentSchemaTable = drvMap.DataView.Table;
+                    }
+                    // It's safe to keep these checks if dataItems can genuinely contain DataRow/DataRowView.
+                    // However, given the itemType is determined earlier, you should rely on that.
+                    else if (itemType == typeof(System.Data.DataRow) && dataItems?.Cast<System.Data.DataRow>().FirstOrDefault()?.Table is System.Data.DataTable firstRowSchemaTable)
+                    {
+                        currentSchemaTable = firstRowSchemaTable;
+                    }
+                    else if (itemType == typeof(System.Data.DataRowView) && dataItems?.Cast<System.Data.DataRowView>().FirstOrDefault()?.DataView.Table is System.Data.DataTable firstRowViewSchemaTable)
+                    {
+                        currentSchemaTable = firstRowViewSchemaTable;
+                    }
+
+                    for (int i = 0; i < Columns.Count; i++)
+                    {
+                        DataGridViewColumn gridColumn = Columns[i];
+                        string dataMappingName = string.IsNullOrEmpty(gridColumn.DataPropertyName) ? gridColumn.Name : gridColumn.DataPropertyName;
+
+                        if (!string.IsNullOrEmpty(dataMappingName))
+                        {
+                            if (itemType == typeof(System.Data.DataRow) || itemType == typeof(System.Data.DataRowView))
+                            {
+                                if (currentSchemaTable != null && currentSchemaTable.Columns.Contains(dataMappingName))
+                                {
+                                    gridColIndexToDataTableColIndexMap[i] = currentSchemaTable.Columns.IndexOf(dataMappingName);
+                                }
+                            }
+                            else if (itemType == typeof(Dictionary<string, object>))
+                            {
+                                gridColIndexToDictKeyMap[i] = dataMappingName;
+                            }
+                            // Added handling for IList<T> or Array where T is a custom type
+                            else if (itemType != typeof(object[]) && itemType != typeof(object) && itemType != null)
+                            {
+                                // This now correctly covers custom types in List<T>, BindingList<T>, and Arrays
+                                // as well as non-generic IList where itemType was inferred.
+                                PropertyInfo? prop = itemType.GetProperty(dataMappingName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                                if (prop != null && prop.CanRead)
+                                {
+                                    gridColIndexToPropertyMap[i] = prop;
+                                }
+                            }
+                            // For object[] case, mapping is implicit by index, so no specific map needed here.
+                        }
+                    }
+                }
+
+
+                // --- 4. Populate rows (using the optimized delegate approach) ---
+                Action<OutlookGridRow, object, object?[]>? processItemFunction = null;
+
+                // Determine the data item type and select the appropriate processing function *once*
+                if (itemType == typeof(System.Data.DataRow))
+                {
+                    processItemFunction = (row, item, cellValues) =>
+                    {
+                        System.Data.DataRow dataRow = (System.Data.DataRow)item;
+                        for (int i = 0; i < Columns.Count; i++)
+                        {
+                            if (gridColIndexToDataTableColIndexMap.TryGetValue(i, out int dataTableColIndex))
+                            {
+                                cellValues[i] = dataRow[dataTableColIndex];
+                            }
+                            else
+                            {
+                                cellValues[i] = DBNull.Value;
+                            }
+                        }
+                    };
+                }
+                else if (itemType == typeof(System.Data.DataRowView))
+                {
+                    processItemFunction = (row, item, cellValues) =>
+                    {
+                        System.Data.DataRowView dataRowView = (System.Data.DataRowView)item;
+                        for (int i = 0; i < Columns.Count; i++)
+                        {
+                            if (gridColIndexToDataTableColIndexMap.TryGetValue(i, out int dataTableColIndex))
+                            {
+                                cellValues[i] = dataRowView.Row[dataTableColIndex];
+                            }
+                            else
+                            {
+                                cellValues[i] = DBNull.Value;
+                            }
+                        }
+                    };
+                }
+                else if (itemType == typeof(object[]))
+                {
+                    processItemFunction = (row, item, cellValues) =>
+                    {
+                        object[] itemArray = (object[])item;
+                        for (int i = 0; i < Columns.Count; i++)
+                        {
+                            if (i < itemArray.Length)
+                            {
+                                cellValues[i] = itemArray[i];
+                            }
+                            else
+                            {
+                                cellValues[i] = DBNull.Value;
+                            }
+                        }
+                    };
+                }
+                else if (itemType == typeof(Dictionary<string, object>))
+                {
+                    processItemFunction = (row, item, cellValues) =>
+                    {
+                        Dictionary<string, object> rowDictionary = (Dictionary<string, object>)item;
+                        for (int i = 0; i < Columns.Count; i++)
+                        {
+                            if (gridColIndexToDictKeyMap.TryGetValue(i, out string? key))
+                            {
+                                if (rowDictionary.TryGetValue(key, out object? value))
+                                {
+                                    cellValues[i] = value;
+                                }
+                                else
+                                {
+                                    cellValues[i] = DBNull.Value;
+                                }
+                            }
+                            else
+                            {
+                                cellValues[i] = DBNull.Value;
+                            }
+                        }
+                    };
+                }
+                // THIS IS THE ENHANCED BLOCK FOR GENERIC/CUSTOM OBJECTS (including those from IList<T>, Array)
+                else if (itemType != null && itemType != typeof(object))
+                {
+                    processItemFunction = (row, item, cellValues) =>
+                    {
+                        for (int i = 0; i < Columns.Count; i++)
+                        {
+                            if (gridColIndexToPropertyMap.TryGetValue(i, out PropertyInfo? propInfo))
+                            {
+                                try
+                                {
+                                    cellValues[i] = propInfo.GetValue(item);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine($"Error getting property '{propInfo.Name}' for item: {ex.Message}");
+                                    cellValues[i] = DBNull.Value;
+                                }
+                            }
+                            else
+                            {
+                                cellValues[i] = DBNull.Value;
+                            }
+                        }
+                    };
+                }
+
+                if (dataItems != null && processItemFunction != null)
+                {
+                    foreach (var item in dataItems)
+                    {
+                        if (item == null) continue;
+
+                        OutlookGridRow row = new();
+                        object?[] cellValues = new object?[Columns.Count];
+
+                        // Call the pre-selected function
+                        processItemFunction(row, item, cellValues);
+
+                        row.CreateCells(this, cellValues!);
+                        generatedRows.Add(row);
+                    }
+                }
+                else if (dataItems != null) // Fallback if no specific processor was found (e.g., itemType was typeof(object))
+                {
+                    // This case might mean auto-generation failed or data is too generic.
+                    // Consider logging a warning or throwing an exception if this state indicates an error.
+                    // For now, it will simply populate with DBNull.Value if no specific mapping is found.
+                    foreach (var item in dataItems)
+                    {
+                        if (item == null) continue;
+
+                        OutlookGridRow row = new();
+                        object?[] cellValues = new object?[Columns.Count];
+                        // If no specific processor, cells will remain DBNull.Value unless explicitly set here.
+                        // This scenario typically indicates either no columns were generated or a generic type
+                        // that couldn't be mapped to properties/columns.
+                        row.CreateCells(this, cellValues!); // Creates empty cells
+                        generatedRows.Add(row);
+                    }
+                }
+
+            }
+            finally
+            {
+                ResumeLayout(true);
+            }
+
+            // --- 5. Finalization ---
+            AssignRows(generatedRows);
+            ForceRefreshGroupBox();
+            Fill();
+        }
+
+        /// <summary>
         /// Clears everything in the OutlookGrid (groups, rows, columns, DataGridViewColumns). Ready for a completely new start.
         /// </summary>
         public void ClearEverythingOnSetDataSource()
@@ -3956,7 +4540,6 @@ namespace Krypton.Toolkit
             _menuItems = null; // Reset for columns context menu reset the columns list
             _contextMenu = null;
             DataSource = null;
-            //Snif everything is gone ! Be Ready for a new start !
         }
 
         /// <summary>
@@ -4041,6 +4624,7 @@ namespace Krypton.Toolkit
         /// <item><see cref="SetDataSource{T}(List{T})"/></item>
         /// <item><see cref="SetDataSource(List{object[]})"/></item>
         /// <item><see cref="SetDataSource(List{Dictionary{string, object}})"/></item>
+        /// <item><see cref="SetDataSource(object?)"/></item>
         /// </list>
         /// </para>
         /// <para>Here are some examples of how you might customize a column, either directly within an override of this method (if this method is virtual)
@@ -4126,6 +4710,7 @@ namespace Krypton.Toolkit
         /// <item><see cref="SetDataSource{T}(List{T})"/></item>
         /// <item><see cref="SetDataSource(List{object[]})"/></item>
         /// <item><see cref="SetDataSource(List{Dictionary{string, object}})"/></item>
+        /// <item><see cref="SetDataSource(object?)"/></item>
         /// </list>
         /// </para>
         /// <para>Here are some examples of how you might customize an <see cref="OutlookGridColumn"/>, either directly within an override of this method (if this method is virtual)
@@ -4212,13 +4797,18 @@ namespace Krypton.Toolkit
                         this.ColumnWidthChanged -= KryptonOutlookGrid_ColumnWidthChanged;
                         this.ColumnDisplayIndexChanged -= KryptonOutlookGrid_ColumnDisplayIndexChanged;
                         this.Scroll -= KryptonOutlookGrid_Scroll;
+                        this.RowHeadersWidthChanged -= KryptonOutlookGrid_RowHeadersWidthChanged;
+                        this.Layout -= KryptonOutlookGrid_Layout;
                     }
                     _summaryGrid = value;
                     if (_summaryGrid != null)
                     {
+                        ConfigSummaryGrid();
                         this.ColumnWidthChanged += KryptonOutlookGrid_ColumnWidthChanged;
                         this.ColumnDisplayIndexChanged += KryptonOutlookGrid_ColumnDisplayIndexChanged;
                         this.Scroll += KryptonOutlookGrid_Scroll;
+                        this.RowHeadersWidthChanged += KryptonOutlookGrid_RowHeadersWidthChanged;
+                        this.Layout += KryptonOutlookGrid_Layout;
                     }
                 }
             }
@@ -4263,6 +4853,20 @@ namespace Krypton.Toolkit
                     _showGrandTotal = value;
                     Fill();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the column that contains row headers is displayed.
+        /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public new bool RowHeadersVisible
+        {
+            get => base.RowHeadersVisible;
+            set
+            {
+                base.RowHeadersVisible = value;
+                _summaryGrid?.RowHeadersVisible = base.RowHeadersVisible;
             }
         }
 
@@ -4403,6 +5007,7 @@ namespace Krypton.Toolkit
         /// </remarks>
         private OutlookGridRow CreateSummaryRow(IOutlookGridGroup? gridGroup, List<OutlookGridRow> rows, int firstColumnIndex)
         {
+            string grandTotalText = "Grand Total";
             OutlookGridRow? grSummaryRowForGroup;
             OutlookGridRow? grSummaryRow;
             grSummaryRow = RowTemplate.Clone() as OutlookGridRow;
@@ -4416,7 +5021,7 @@ namespace Krypton.Toolkit
             grSummaryRowForGroup = grSummaryRow.Clone() as OutlookGridRow;
 
             // Define the group text once
-            object groupText = gridGroup == null ? "Grand Total" : gridGroup.Value!; // Use gridGroup.Value directly
+            object groupText = gridGroup == null ? grandTotalText : gridGroup.Value!; // Use gridGroup.Value directly
 
             // Create cells for the row. This needs to be robust for all columns.
             grSummaryRow.CreateCells(this, new object[_internalColumns.Count]); // Create enough cells for all columns
@@ -4482,9 +5087,9 @@ namespace Krypton.Toolkit
                         {
                             displayValue = string.Format(
                                 col.AggregationFormatString,
-                                groupText,                         // {0}
-                                col.AggregationType.ToString(),    // {1}
-                                formattedAggregatedValueForCell    // {2}
+                                groupText.ToStringNull() == grandTotalText ? "" : groupText,    // {0}
+                                col.AggregationType.ToString(),                                 // {1}
+                                formattedAggregatedValueForCell                                 // {2}
                             );
                         }
                         catch (FormatException)
@@ -4509,37 +5114,188 @@ namespace Krypton.Toolkit
 
         #region Set Total Grid
 
-        private void KryptonOutlookGrid_Scroll(object? sender, ScrollEventArgs e)
-        {
-            if (_summaryGrid != null && e.ScrollOrientation == ScrollOrientation.HorizontalScroll)
-            {
-                _summaryGrid?.HorizontalScrollingOffset = this.HorizontalScrollingOffset;
-            }
-        }
-
+        /// <summary>
+        /// Handles the ColumnDisplayIndexChanged event for the <see cref="KryptonOutlookGrid"/>.
+        /// Synchronizes the display order of columns in the summary grid with the main grid.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">A <see cref="DataGridViewColumnEventArgs"/> that contains the event data.</param>
         private void KryptonOutlookGrid_ColumnDisplayIndexChanged(object? sender, DataGridViewColumnEventArgs e)
         {
             if (_summaryGrid != null && _summaryGrid.Columns.Count > 0)
+            {
                 for (int i = 0; i < this.ColumnCount; i++)
                 {
-                    if (_summaryGrid.ColumnCount > i) // Added bounds check
+                    if (_summaryGrid.ColumnCount > i)
                         _summaryGrid.Columns[i].DisplayIndex = this.Columns[i].DisplayIndex;
                 }
+            }
         }
 
+        /// <summary>
+        /// Handles the Scroll event for the <see cref="KryptonOutlookGrid"/>.
+        /// Synchronizes the horizontal scroll offset of the summary grid with the main grid.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">A <see cref="ScrollEventArgs"/> that contains the event data.</param>
+        private void KryptonOutlookGrid_Scroll(object? sender, ScrollEventArgs e)
+        {
+            if (_summaryGrid != null && e.ScrollOrientation == ScrollOrientation.HorizontalScroll)
+                _summaryGrid?.HorizontalScrollingOffset = this.HorizontalScrollingOffset;
+        }
+
+        /// <summary>
+        /// Handles the ColumnWidthChanged event for the <see cref="KryptonOutlookGrid"/>.
+        /// Synchronizes the width of a column in the summary grid with the main grid and adjusts the summary grid's height.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">A <see cref="DataGridViewColumnEventArgs"/> that contains the event data.</param>
         private void KryptonOutlookGrid_ColumnWidthChanged(object? sender, DataGridViewColumnEventArgs e)
         {
             if (_summaryGrid != null && _summaryGrid.ColumnCount > 0 && e.Column.Index < _summaryGrid.ColumnCount)
             {
                 _summaryGrid.Columns[e.Column.Index].Width = this.Columns[e.Column.Index].Width;
-                if (_summaryGrid.Rows.Count > 0)
-                {
-                    var sHeight = (_summaryGrid.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
-                    _summaryGrid.Height = sHeight;
-                    _summaryGrid.Invalidate();
-                }
+                AdjustSummaryGridHeight();
             }
         }
+
+        /// <summary>
+        /// Handles the <see cref="System.Windows.Forms.DataGridView.RowHeadersWidthChanged"/> event.
+        /// </summary>
+        /// <remarks>
+        /// This method synchronizes the <see cref="System.Windows.Forms.DataGridView.RowHeadersWidth"/> property
+        /// of the internal <c>_summaryGrid</c> with the current instance's
+        /// <see cref="System.Windows.Forms.DataGridView.RowHeadersWidth"/>. This ensures that the row header width
+        /// of the summary grid updates whenever the main grid's row header width changes,
+        /// maintaining a consistent appearance.
+        /// </remarks>
+        /// <param name="sender">The source of the event, typically the <see cref="System.Windows.Forms.DataGridView"/> instance that raised the event.</param>
+        /// <param name="e">An <see cref="System.EventArgs"/> object that contains the event data.</param>
+        private void KryptonOutlookGrid_RowHeadersWidthChanged(object? sender, EventArgs e)
+        {
+            _summaryGrid?.RowHeadersWidth = this.RowHeadersWidth;
+            AdjustSummaryGridHeight();
+        }
+
+        private void KryptonOutlookGrid_Layout(object? sender, LayoutEventArgs e)
+        {
+            AdjustSummaryGridHeight();
+        }
+
+        /// <summary>
+        /// Configures the appearance and properties of the internal summary grid (<see cref="_summaryGrid"/>).
+        /// </summary>
+        private void ConfigSummaryGrid()
+        {
+            if (_summaryGrid == null) return;
+            _summaryGrid.SuspendLayout();
+            // Configure totalGrid appearance and properties
+            _summaryGrid.AllowUserToAddRows = false;
+            _summaryGrid.AllowUserToDeleteRows = false;
+            _summaryGrid.AutoGenerateColumns = false;
+            _summaryGrid.AutoGenerateKryptonColumns = false;
+            _summaryGrid.ColumnHeadersVisible = false;
+            _summaryGrid.Enabled = false;
+            _summaryGrid.ReadOnly = true;
+            _summaryGrid.RowHeadersVisible = this.RowHeadersVisible;
+            _summaryGrid.RowHeadersWidth = this.RowHeadersWidth;
+            _summaryGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            _summaryGrid.ScrollBars = ScrollBars.None;
+            _summaryGrid.TabStop = false;
+            _summaryGrid.Rows.Clear();
+            _summaryGrid.Columns.Clear();
+            _summaryGrid.ResumeLayout();
+        }
+
+        /// <summary>
+        /// Resets the summary grid by clearing its rows and columns, and then populating its columns
+        /// based on the columns of the main <see cref="KryptonOutlookGrid"/>.
+        /// This method ensures the summary grid's column structure mirrors the main grid, including width,
+        /// display index, visibility, value type, alignment, and format.
+        /// </summary>
+        private void ResetSummaryGrid()
+        {
+            if (_summaryGrid == null) return;
+            _summaryGrid.SuspendLayout();
+            _summaryGrid.Rows.Clear();
+            _summaryGrid.Columns.Clear();
+            // Add columns to totalGrid
+            foreach (DataGridViewColumn parentCol in this.Columns)
+            {
+                try
+                {
+                    var index = _summaryGrid.Columns.Add(parentCol.Name, "");
+                    _summaryGrid.Columns[index].Width = parentCol.Width;
+                    _summaryGrid.Columns[index].DisplayIndex = parentCol.DisplayIndex;
+                    _summaryGrid.Columns[index].Visible = parentCol.Visible;
+                    _summaryGrid.Columns[index].ValueType = parentCol.ValueType;
+                    _summaryGrid.Columns[index].DefaultCellStyle.Alignment = parentCol.DefaultCellStyle.Alignment;
+                    _summaryGrid.Columns[index].DefaultCellStyle.Format = parentCol.DefaultCellStyle.Format;
+                    _summaryGrid.Columns[index].SortMode = DataGridViewColumnSortMode.NotSortable;
+                }
+                catch (Exception) { /* Handle exceptions gracefully */ }
+            }
+            _summaryGrid.Visible = true;
+            _summaryGrid.ResumeLayout();
+        }
+
+        /// <summary>
+        /// Adjusts the height of the summary grid to fit its content.
+        /// It calculates the preferred height of the first row and sets the summary grid's height accordingly.
+        /// </summary>
+        private void AdjustSummaryGridHeight()
+        {
+            // The previous _summaryGrid (now this.SummaryGrid)
+            if (_summaryGrid != null && _summaryGrid.Rows.Count > 0)
+            {
+                // Calculate the preferred height of the summary grid row
+                var sHeight = (_summaryGrid.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
+                _summaryGrid.Height = sHeight;
+                int mainGridScrollbarWidth = this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
+                if (mainGridScrollbarWidth > 0)
+                {
+                    if (!_summaryGrid.Columns.Contains("ColScroll"))
+                        _summaryGrid.Columns.Add("ColScroll", "");
+                    int totalVisibleWidth = _summaryGrid.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible && c.Name != "ColScroll").Sum(c => c.Width);
+                    int rowHeaderWidth = _summaryGrid.RowHeadersVisible ? _summaryGrid.RowHeadersWidth : 0;
+                    int availableWidth = _summaryGrid.Width - (rowHeaderWidth + totalVisibleWidth);
+                    _summaryGrid.Columns["ColScroll"]?.Width = Math.Max(mainGridScrollbarWidth, availableWidth);
+                }
+                else if (_summaryGrid.Columns.Contains("ColScroll"))
+                {
+                    _summaryGrid.Columns.Remove("ColScroll");
+                }
+
+                _summaryGrid.ClearSelection();
+                // Invalidate and Refresh are good, but also ensure layout passes are triggered.
+                _summaryGrid.PerformLayout(); // Force immediate layout recalculation for summary grid
+                _summaryGrid.Invalidate();
+                _summaryGrid.Refresh();
+
+                if (this.Parent is KryptonAllInOneGrid parentAllInOneGrid)
+                {
+                    //parentAllInOneGrid.DesignerOutlookGridHeightChanged();
+                }
+
+            }
+        }
+
+        /*private void AdjustSummaryGridHeight()
+        {
+            if (_summaryGrid != null && _summaryGrid.Rows.Count > 0)
+            {
+                var sHeight = (_summaryGrid!.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
+                //_summaryGrid.SuspendLayout();
+                _summaryGrid.Height = sHeight;
+
+                int rightPadding = this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
+                _summaryGrid.Padding = new Padding(0, 0, rightPadding, 0);
+
+                //_summaryGrid.ResumeLayout(true);
+                _summaryGrid.ClearSelection();
+
+            }
+        }*/
 
         /// <summary>
         /// Configures and populates a 'total' DataGridView based on the data and column settings of a 'parent' DataGridView.
@@ -4565,11 +5321,6 @@ namespace Krypton.Toolkit
             _summaryGrid.RowHeadersWidth = this.RowHeadersWidth;
             _summaryGrid.Rows.Clear();
             _summaryGrid.Columns.Clear();
-            //_summaryGrid.StateDisabled = this.StateNormal;
-            /*_summaryGrid.StateCommon.DataCell.Content.Color1 = this.ColumnHeadersDefaultCellStyle.ForeColor;
-            Font font = this.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelNormalControl, PaletteState.Normal) ??
-                                 new Font(this.DefaultCellStyle.Font!, FontStyle.Bold);
-            _summaryGrid.StateCommon.DataCell.Content.Font = font;*/
 
             // Add columns to totalGrid
             foreach (DataGridViewColumn parentCol in this.Columns)
@@ -5551,6 +6302,11 @@ namespace Krypton.Toolkit
             try
             {
                 var cols = this.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).Select(c => new KryptonOutlookGridFilterSourceColumn(c.Name, c.HeaderText, c.ValueType?.Name ?? string.Empty, c.DefaultCellStyle.Format)).ToList();
+                if (cols == null || cols.Count == 0)
+                {
+                    KryptonMessageBox.Show("No visible columns found to filter.", "No Columns");
+                    return;
+                }
                 filterBuilder = new(cols, ToolBarFilters)
                 {
                     Text = $"Filter"
@@ -5660,6 +6416,7 @@ namespace Krypton.Toolkit
         /// </remarks>
         private void SearchToolBar_Search(object sender, KryptonOutlookGridSearchToolBarSearchEventArgs e)
         {
+            if (CurrentCell == null) return; // If no current cell, do not proceed with search
             bool restartSearch = true; // This variable seems to be hardcoded true, consider its actual purpose or make it dynamic
             int startColumn = 0;
             int startRow = 0;
@@ -5886,12 +6643,14 @@ namespace Krypton.Toolkit
             if (additionalPadding < 0) throw new ArgumentOutOfRangeException(nameof(additionalPadding), "Additional padding must be non-negative.");
 
             // Dynamically determine the vertical scrollbar width
-            int actualVScrollbarWidth = 10;
-            VScrollBar? vScrollBar = this.Controls.OfType<VScrollBar>().FirstOrDefault();
+            int actualVScrollbarWidth = 5;//  10;
+            /*VScrollBar? vScrollBar = this.Controls.OfType<VScrollBar>().FirstOrDefault();
             if (vScrollBar != null && vScrollBar.Visible)
             {
                 actualVScrollbarWidth += vScrollBar.Width;
-            }
+            }*/
+
+            actualVScrollbarWidth += this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
 
             // Calculate total width of all visible columns
             float totalVisibleWidth = this.Columns.Cast<DataGridViewColumn>()
@@ -5910,23 +6669,26 @@ namespace Krypton.Toolkit
             {
                 float adjustmentRatio = (float)availableWidth / totalVisibleWidth;
                 this.SuspendLayout();
+                _summaryGrid?.SuspendLayout();
+                if (_summaryGrid != null)
+                    this.ColumnWidthChanged -= KryptonOutlookGrid_ColumnWidthChanged;
                 // Adjust each visible column's width proportionally
                 foreach (var column in this.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible))
                 {
                     column.Width = Convert.ToInt32(column.Width * adjustmentRatio);
+                    if (_summaryGrid?.ColumnCount > column.Index)
+                        _summaryGrid?.Columns[column.Index]?.Width = column.Width; // Adjust summary grid column width if it exists
                 }
+                if (_summaryGrid != null)
+                    this.ColumnWidthChanged += KryptonOutlookGrid_ColumnWidthChanged;
                 this.ResumeLayout();
-                if (_summaryGrid != null && _summaryGrid.Rows.Count > 0)
-                {
-                    var sHeight = (_summaryGrid!.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
-                    _summaryGrid.Height = sHeight;
-                    _summaryGrid.Invalidate();
-                }
+                _summaryGrid?.ResumeLayout();
+                AdjustSummaryGridHeight();
             }
         }
 
-        #endregion Adjust Columns Width
 
+        #endregion Adjust Columns Width
 
         /*/// <summary>
         /// Gets distinct values from the column as filter options.

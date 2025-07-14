@@ -16,7 +16,7 @@ namespace OutlookGridTest
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
 #endif
 
-            Application.Run(new Form1());
+            Application.Run(new Form2());
         }
     }
 }

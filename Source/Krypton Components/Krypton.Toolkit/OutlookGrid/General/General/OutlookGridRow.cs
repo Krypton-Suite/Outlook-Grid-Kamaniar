@@ -371,8 +371,7 @@ namespace Krypton.Toolkit
                 return base.GetPreferredHeight(rowIndex, autoSizeRowMode, fixedWidth);
             }
 
-            // --- Original Logic for Summary Rows remains below ---
-            // (This part seems correct for summary rows if PaintCells correctly uses cell padding)
+            // --- Logic for Summary Rows ---
             int maxContentHeight = 0;
             var boldFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, PaletteState.Normal);
             boldFont ??= new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
@@ -401,8 +400,11 @@ namespace Krypton.Toolkit
                 }
             }
 
-            int extraRowPadding = 2;
-            int calculatedSummaryRowHeight = maxContentHeight + extraRowPadding;
+            int stopContentPadding = 6; // Space above the text/icon/image
+            int sbottomContentPadding = 4; // Space between text/icon/image bottom and the custom bottom line area
+
+            int extraRowPadding = 0;
+            int calculatedSummaryRowHeight = maxContentHeight + extraRowPadding + stopContentPadding + sbottomContentPadding - (2 * cellPadding);
             return Math.Max(grid.RowTemplate.Height, calculatedSummaryRowHeight);
         }
 
@@ -421,7 +423,6 @@ namespace Krypton.Toolkit
         protected override void Paint(Graphics graphics, Rectangle clipBounds, Rectangle rowBounds, int rowIndex, DataGridViewElementStates rowState, bool isFirstDisplayedRow, bool isLastVisibleRow)
         {
             KryptonOutlookGrid grid = (KryptonOutlookGrid)DataGridView!;
-
             if (_isGroupRow)
             {
                 // --- Define consistent vertical padding and offsets for drawing ---
@@ -439,26 +440,21 @@ namespace Krypton.Toolkit
                     customBottomLineAreaHeight = 2; // Default for other renderers
                 }
 
-
                 // --- Horizontal Calculations ---
                 int rowHeadersWidth = grid!.RowHeadersVisible ? grid.RowHeadersWidth : 0;
                 int groupLevelIndentation = _group!.Level * GlobalStaticValues.GroupLevelMultiplier;
-
                 int totalVisibleColumnsWidth = grid.Columns.GetColumnsWidth(DataGridViewElementStates.Visible);
 
-                Rectangle contentBounds = new(
-                    rowBounds.Left + rowHeadersWidth,
-                    rowBounds.Top,
-                    totalVisibleColumnsWidth,
-                    rowBounds.Height
-                );
-
+                Rectangle contentBounds = new(rowBounds.Left + rowHeadersWidth, rowBounds.Top, totalVisibleColumnsWidth, rowBounds.Height);
                 contentBounds.X -= grid.HorizontalScrollingOffset;
-
                 // --- Determine Selection State and Corresponding PaletteState ---
                 bool isSelected = (rowState & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected;
-                PaletteState overallRowRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
+                if (!isSelected && grid.SelectionMode != DataGridViewSelectionMode.FullRowSelect)
+                {
+                    isSelected = grid.CurrentCell?.RowIndex == rowIndex;
+                }
 
+                PaletteState overallRowRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
                 // --- RowHeader painting ---
                 if (grid.RowHeadersVisible)
                 {
@@ -473,11 +469,9 @@ namespace Krypton.Toolkit
                     {
                         using (GraphicsPath rhPath = grid.Renderer!.RenderStandardBorder.GetBackPath(rhRenderContext, rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, rowHeaderRenderingState))
                         {
-                            grid.Renderer.RenderStandardBack.DrawBack(rhRenderContext,
-                                rowHeaderPaintArea, rhPath, rowHeaderPaletteBack, VisualOrientation.Top, rowHeaderRenderingState, null);
+                            grid.Renderer.RenderStandardBack.DrawBack(rhRenderContext, rowHeaderPaintArea, rhPath, rowHeaderPaletteBack, VisualOrientation.Top, rowHeaderRenderingState, null);
                         }
-                        grid.Renderer.RenderStandardBorder.DrawBorder(rhRenderContext,
-                            rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, rowHeaderRenderingState);
+                        grid.Renderer.RenderStandardBorder.DrawBorder(rhRenderContext, rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, rowHeaderRenderingState);
                     }
                 }
 
@@ -495,11 +489,9 @@ namespace Krypton.Toolkit
                 {
                     using (GraphicsPath path = grid.Renderer!.RenderStandardBorder.GetBackPath(renderContext, contentBounds, contentPaletteBorder, VisualOrientation.Top, contentRenderingState))
                     {
-                        grid.Renderer.RenderStandardBack.DrawBack(renderContext,
-                            contentBounds, path, contentPaletteBack, VisualOrientation.Top, contentRenderingState, null);
+                        grid.Renderer.RenderStandardBack.DrawBack(renderContext, contentBounds, path, contentPaletteBack, VisualOrientation.Top, contentRenderingState, null);
                     }
-                    grid.Renderer.RenderStandardBorder.DrawBorder(renderContext,
-                        contentBounds, contentPaletteBorder, VisualOrientation.Top, contentRenderingState);
+                    grid.Renderer.RenderStandardBorder.DrawBorder(renderContext, contentBounds, contentPaletteBorder, VisualOrientation.Top, contentRenderingState);
                 }
 
                 // --- Draw the custom bottom line --- (unchanged, as it's bottom-aligned)
@@ -591,21 +583,14 @@ namespace Krypton.Toolkit
                 Font groupFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, overallRowRenderingState) ??
                                  new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
 
-                Rectangle textDrawingRect = new(
-                    offsetText,
-                    textDrawingTopY, // Text drawing remains top-aligned
-                    textRectWidth,
+                Rectangle textDrawingRect = new(offsetText, textDrawingTopY, textRectWidth,
                     rowBounds.Height - (textDrawingTopY - rowBounds.Top) - customBottomLineAreaHeight - bottomContentPadding
                 );
 
                 if (textDrawingRect.Width <= 0) textDrawingRect.Width = 1;
                 if (textDrawingRect.Height <= 0) textDrawingRect.Height = 1;
 
-                /*var text = _group.Text;
-                if (_group.Collapsed)
-                    text = $"{_group.Text}{_group.SummaryText}";*/
-
-                var text = _group.Text; // This is the main group text (e.g., "Category: Electronics")
+                var text = _group.Text;
 
                 if (_group.Collapsed)
                 {
@@ -615,7 +600,7 @@ namespace Krypton.Toolkit
                     if (!string.IsNullOrEmpty(text) && !string.IsNullOrEmpty(summaryText))
                     {
                         text += Environment.NewLine;
-                        text += summaryText; // _group.SummaryText now contains the multi-line, indented summary.
+                        text += summaryText;
                     }
                 }
 
@@ -631,15 +616,22 @@ namespace Krypton.Toolkit
                     flags |= TextFormatFlags.EndEllipsis;
                 }
 
-                TextRenderer.DrawText(graphics, text, groupFont, textDrawingRect,
-                                      groupTextForeColor,
-                                      flags);
+                TextRenderer.DrawText(graphics, text, groupFont, textDrawingRect, groupTextForeColor, flags);
 
-                // RE-ADDED: This line is necessary to trigger GetPreferredHeight updates
+                // This line is necessary to trigger GetPreferredHeight updates
                 grid.AutoResizeRow(rowIndex, DataGridViewAutoSizeRowMode.AllCells);
+                if (grid.SelectionMode != DataGridViewSelectionMode.FullRowSelect)
+                {
+                    grid.InvalidateRow(rowIndex);
+                }
             }
             else // Not a group row
             {
+                if (grid.PreviousSelectedGroupRow > -1 && grid.PreviousSelectedGroupRow != rowIndex)
+                {
+                    grid.InvalidateRow(grid.PreviousSelectedGroupRow);
+                    //grid.ClearSelection();
+                }
                 base.Paint(graphics, clipBounds, rowBounds, rowIndex, rowState, isFirstDisplayedRow, isLastVisibleRow);
             }
         }
@@ -669,12 +661,10 @@ namespace Krypton.Toolkit
                 var boldFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, PaletteState.Normal);
                 boldFont ??= new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
 
-                bool isSelected = this.Selected;
-
-                PaletteState overallCellRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
-
                 foreach (DataGridViewCell cell in this.Cells)
                 {
+                    bool isSelected = cell.Selected;
+                    PaletteState overallCellRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
                     Rectangle cellBounds = grid.GetCellDisplayRectangle(cell.ColumnIndex, rowIndex, false);
 
                     if (cellBounds.IntersectsWith(clipBounds))
@@ -702,8 +692,7 @@ namespace Krypton.Toolkit
                         {
                             using (GraphicsPath cellPath = grid.Renderer!.RenderStandardBorder.GetBackPath(cellRenderContext, cellBounds, cellBorderPalette, VisualOrientation.Top, overallCellRenderingState))
                             {
-                                grid.Renderer.RenderStandardBack.DrawBack(cellRenderContext,
-                                    cellBounds, cellPath, cellBackPalette, VisualOrientation.Top, overallCellRenderingState, null);
+                                grid.Renderer.RenderStandardBack.DrawBack(cellRenderContext, cellBounds, cellPath, cellBackPalette, VisualOrientation.Top, overallCellRenderingState, null);
                             }
                         }
 
@@ -728,12 +717,7 @@ namespace Krypton.Toolkit
                             cellText = string.Empty;
 
                         int cellPadding = 3;
-                        Rectangle textRect = new(
-                            cellBounds.X + cellPadding,
-                            cellBounds.Y,
-                            cellBounds.Width - (2 * cellPadding),
-                            cellBounds.Height
-                        );
+                        Rectangle textRect = new(cellBounds.X + cellPadding, cellBounds.Y, cellBounds.Width - (2 * cellPadding), cellBounds.Height);
 
                         TextRenderer.DrawText(graphics, cellText, boldFont, textRect, currentCellTextColor, flags);
 
@@ -744,20 +728,16 @@ namespace Krypton.Toolkit
                         using (Pen cellBorderPen = new(borderColor, borderThickness))
                         {
                             // Right Border
-                            graphics.DrawLine(cellBorderPen, cellBounds.Right - borderThickness, cellBounds.Top,
-                                              cellBounds.Right - borderThickness, cellBounds.Bottom);
+                            graphics.DrawLine(cellBorderPen, cellBounds.Right - borderThickness, cellBounds.Top, cellBounds.Right - borderThickness, cellBounds.Bottom);
 
                             // Left Border
-                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Top,
-                                              cellBounds.Left, cellBounds.Bottom);
+                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Top, cellBounds.Left, cellBounds.Bottom);
 
                             // Top Border
-                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Top,
-                                              cellBounds.Right, cellBounds.Top);
+                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Top, cellBounds.Right, cellBounds.Top);
 
                             // Bottom Border
-                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Bottom - borderThickness,
-                                              cellBounds.Right, cellBounds.Bottom - borderThickness);
+                            graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Bottom - borderThickness, cellBounds.Right, cellBounds.Bottom - borderThickness);
                         }
 
                         // --- PAINT ALL DOUBLE CELL BORDERS ---
@@ -810,6 +790,7 @@ namespace Krypton.Toolkit
 
                     }
                 }
+                // This line is necessary to trigger GetPreferredHeight updates
                 grid.AutoResizeRow(rowIndex, DataGridViewAutoSizeRowMode.AllCells); // Manually resize
             }
             else // It's a regular data row

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Data;
+using System.Globalization;
 using System.Xml.Linq;
 
 using Krypton.Toolkit;
@@ -18,7 +19,6 @@ namespace OutlookGridTest
         private readonly string[] _namePrefixes = { "Super", "Mega", "Ultra", "Smart", "Eco", "Pro", "Elite", "Compact" };
         private readonly string[] _nameSuffixes = { "X", "Plus", "Max", "Series", "Edition", "Go", "Connect", "Master" };
         private readonly string[] _commonProductWords = { "Laptop", "Mouse", "Keyboard", "Chair", "Monitor", "Desk", "Book", "Shirt", "Lamp", "Pen", "Tablet", "Speaker", "Camera", "Headphones" };
-
 
         public Form1()
         {
@@ -106,8 +106,9 @@ namespace OutlookGridTest
             bsData.DataSource = _dataSet;
             bsData.DataMember = _dataTable.TableName;
 
-            kryptonExtraGrid1.OutlookGrid.DataSource = bsData;
+            //kryptonExtraGrid1.OutlookGrid.DataSource = bsData;
             AddTestData();
+            kryptonExtraGrid1.OutlookGrid.SetDataSource(bsData);
         }
 
         private void AddTestData()
@@ -663,6 +664,21 @@ namespace OutlookGridTest
         /// <returns><c>true</c> if the <paramref name="type"/> is a floating-point number type (or a nullable floating-point type); otherwise, <c>false</c>.</returns>
         public static bool IsDouble(this Type? type) =>
             type is not null && FloatingPointTypes.Contains(Nullable.GetUnderlyingType(type) ?? type);
+
+        /// <summary>
+        /// Converts an object to an integer. If conversion fails, returns 0.
+        /// </summary>
+        /// <param name="obj">The object to convert.</param>
+        /// <returns>An integer representation of the object, or 0 if conversion fails.</returns>
+        public static int ToInteger(this object? obj)
+        {
+            if (obj == null) return 0;
+            if (int.TryParse(obj.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out int result))
+            {
+                return result;
+            }
+            return 0;
+        }
 
     }
 
