@@ -280,11 +280,14 @@ namespace Krypton.Toolkit
         public override int GetPreferredHeight(int rowIndex, DataGridViewAutoSizeRowMode autoSizeRowMode, bool fixedWidth)
         {
             KryptonOutlookGrid grid = (KryptonOutlookGrid)this.DataGridView!;
+            int topContentPadding = 6; // Space above the text/icon/image
+            int bottomContentPadding = 4; // Space between text/icon/image bottom and the custom bottom line area
+
             if (grid == null) return base.GetPreferredHeight(rowIndex, autoSizeRowMode, fixedWidth);
 
             if (_isGroupRow)
             {
-                // 1. Determine the font
+                // Determine the font
                 PaletteState overallRowRenderingState = grid.SelectedRows.Contains(this) ? PaletteState.CheckedNormal : PaletteState.Normal;
                 Font groupFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, overallRowRenderingState) ??
                                  new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
@@ -302,7 +305,7 @@ namespace Krypton.Toolkit
                     }
                 }
 
-                // 3. Calculate the precise measureWidth (horizontal space for text)
+                // Calculate the precise measureWidth (horizontal space for text)
                 int groupRowLevelIndentation = _group.Level * GlobalStaticValues.GroupLevelMultiplier;
                 int imageOffsetUsed = (_group.GroupImage != null) ? GlobalStaticValues.GroupImageSide : 0;
                 int fixedLeftTextPad = 18; // From Paint: offset for icon and initial text indent
@@ -316,7 +319,7 @@ namespace Krypton.Toolkit
                     measureWidth = 50; // Fallback
                 }
 
-                // 4. Determine TextFormatFlags (consistent with Paint)
+                // Determine TextFormatFlags (consistent with Paint)
                 TextFormatFlags flags = TextFormatFlags.PreserveGraphicsClipping;
                 if (_group.Collapsed)
                 {
@@ -329,7 +332,7 @@ namespace Krypton.Toolkit
                     flags |= TextFormatFlags.EndEllipsis;
                 }
 
-                // 5. Measure the required text height
+                // Measure the required text height
                 Size textSize;
                 using (Graphics tempGraphics = grid.CreateGraphics())
                 {
@@ -340,7 +343,7 @@ namespace Krypton.Toolkit
                                                         flags: flags);
                 }
 
-                // 6. Calculate total preferred height (Vertical components)
+                // Calculate total preferred height (Vertical components)
                 int measuredTextHeight = textSize.Height;
                 int iconHeight = 11; // From Paint
                 int groupImageHeight = GlobalStaticValues.GroupImageSide; // From Paint
@@ -349,12 +352,6 @@ namespace Krypton.Toolkit
                 int customBottomLineAreaHeight = (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2013) ?
                                                   GlobalStaticValues.Office2013GroupRowHeight :
                                                   2; // From Paint
-
-                // --- Custom Padding Values (YOU WILL LIKELY NEED TO TUNE THESE) ---
-                // These values represent the empty space above the highest content element
-                // and below the lowest content element, excluding the custom bottom line itself.
-                int topContentPadding = 6; // Space above the text/icon/image
-                int bottomContentPadding = 4; // Space between text/icon/image bottom and the custom bottom line area
 
                 // Max height required by the visual content (text, icon, image)
                 int maxVisualContentHeight = Math.Max(measuredTextHeight, Math.Max(iconHeight, groupImageHeight));
@@ -366,46 +363,44 @@ namespace Krypton.Toolkit
                 // This prevents the row from becoming too small if content is minimal.
                 return Math.Max(calculatedHeight, grid.RowTemplate.Height);
             }
-            else if (!_isSummaryRow) // Normal data row
+            else if (_isSummaryRow)
+            {
+                int maxContentHeight = 0;
+                var boldFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, PaletteState.Normal);
+                boldFont ??= new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
+                TextFormatFlags summaryFlags = TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.WordBreak;
+                int cellPadding = 3;
+
+                foreach (DataGridViewCell cell in this.Cells)
+                {
+                    if (cell.Visible && cell.OwningColumn != null && cell.OwningColumn.Visible)
+                    {
+                        string cellText = cell.FormattedValue?.ToString() ?? string.Empty;
+                        int columnWidth = cell.OwningColumn.Width;
+                        int availableTextWidth = columnWidth - (2 * cellPadding);
+                        if (availableTextWidth <= 0) continue;
+
+                        Size textSize;
+                        using (Graphics tempGraphics = grid.CreateGraphics())
+                        {
+                            textSize = TextRenderer.MeasureText(tempGraphics,
+                                                             text: cellText,
+                                                             font: boldFont,
+                                                             proposedSize: new Size(availableTextWidth, int.MaxValue),
+                                                             flags: summaryFlags);
+                        }
+                        maxContentHeight = Math.Max(maxContentHeight, textSize.Height + (2 * cellPadding));
+                    }
+                }
+
+                int extraRowPadding = 0;
+                int calculatedSummaryRowHeight = maxContentHeight + extraRowPadding + topContentPadding + bottomContentPadding - (2 * cellPadding);
+                return Math.Max(grid.RowTemplate.Height, calculatedSummaryRowHeight);
+            }
+            else // Normal data row
             {
                 return base.GetPreferredHeight(rowIndex, autoSizeRowMode, fixedWidth);
             }
-
-            // --- Logic for Summary Rows ---
-            int maxContentHeight = 0;
-            var boldFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, PaletteState.Normal);
-            boldFont ??= new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
-            TextFormatFlags summaryFlags = TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.WordBreak;
-            int cellPadding = 3;
-
-            foreach (DataGridViewCell cell in this.Cells)
-            {
-                if (cell.Visible && cell.OwningColumn != null && cell.OwningColumn.Visible)
-                {
-                    string cellText = cell.FormattedValue?.ToString() ?? string.Empty;
-                    int columnWidth = cell.OwningColumn.Width;
-                    int availableTextWidth = columnWidth - (2 * cellPadding);
-                    if (availableTextWidth <= 0) continue;
-
-                    Size textSize;
-                    using (Graphics tempGraphics = grid.CreateGraphics())
-                    {
-                        textSize = TextRenderer.MeasureText(tempGraphics,
-                                                         text: cellText,
-                                                         font: boldFont,
-                                                         proposedSize: new Size(availableTextWidth, int.MaxValue),
-                                                         flags: summaryFlags);
-                    }
-                    maxContentHeight = Math.Max(maxContentHeight, textSize.Height + (2 * cellPadding));
-                }
-            }
-
-            int stopContentPadding = 6; // Space above the text/icon/image
-            int sbottomContentPadding = 4; // Space between text/icon/image bottom and the custom bottom line area
-
-            int extraRowPadding = 0;
-            int calculatedSummaryRowHeight = maxContentHeight + extraRowPadding + stopContentPadding + sbottomContentPadding - (2 * cellPadding);
-            return Math.Max(grid.RowTemplate.Height, calculatedSummaryRowHeight);
         }
 
         /// <summary>
@@ -494,7 +489,7 @@ namespace Krypton.Toolkit
                     grid.Renderer.RenderStandardBorder.DrawBorder(renderContext, contentBounds, contentPaletteBorder, VisualOrientation.Top, contentRenderingState);
                 }
 
-                // --- Draw the custom bottom line --- (unchanged, as it's bottom-aligned)
+                // --- Draw the custom bottom line ---
                 if (KryptonManager.CurrentGlobalPalette.GetRenderer() == KryptonManager.RenderOffice2010)
                 {
                     using (Pen focusPen = new(Color.Gray))
@@ -529,7 +524,7 @@ namespace Krypton.Toolkit
 
                 // --- Set the icon ---
                 int iconX = contentBounds.Left + 4 + groupLevelIndentation;
-                int iconY = centeredIconY; // NEW: Vertically centered
+                int iconY = centeredIconY; // Vertically centered
 
                 if (_group.Collapsed)
                 {
@@ -560,7 +555,7 @@ namespace Krypton.Toolkit
                 {
                     int groupImageHeight = GlobalStaticValues.GroupImageSide; // Height of the group image
                     int imageX = contentBounds.Left + GlobalStaticValues.ImageOffsetWidth + groupLevelIndentation;
-                    int imageY = rowBounds.Y + (rowBounds.Height / 2) - (groupImageHeight / 2); // NEW: Vertically centered
+                    int imageY = rowBounds.Y + (rowBounds.Height / 2) - (groupImageHeight / 2); // Vertically centered
 
                     graphics.DrawImage(_group.GroupImage, imageX, imageY, GlobalStaticValues.GroupImageSide, GlobalStaticValues.GroupImageSide);
                     imageOffset = GlobalStaticValues.GroupImageSide;
@@ -627,10 +622,10 @@ namespace Krypton.Toolkit
             }
             else // Not a group row
             {
+                // when row change using arrow keys.
                 if (grid.PreviousSelectedGroupRow > -1 && grid.PreviousSelectedGroupRow != rowIndex)
                 {
                     grid.InvalidateRow(grid.PreviousSelectedGroupRow);
-                    //grid.ClearSelection();
                 }
                 base.Paint(graphics, clipBounds, rowBounds, rowIndex, rowState, isFirstDisplayedRow, isLastVisibleRow);
             }
@@ -666,13 +661,13 @@ namespace Krypton.Toolkit
                     bool isSelected = cell.Selected;
                     PaletteState overallCellRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
                     Rectangle cellBounds = grid.GetCellDisplayRectangle(cell.ColumnIndex, rowIndex, false);
-
+                    Debug.WriteLine(cell == this.HeaderCell);
                     if (cellBounds.IntersectsWith(clipBounds))
                     {
                         DataGridViewCellStyle cellStyle = cell.InheritedStyle;
 
                         IPaletteBack cellBackPalette;
-                        IPaletteBorder cellBorderPalette;
+                        PaletteBorder cellBorderPalette;
                         Color currentCellTextColor;
 
                         if (isSelected)
@@ -729,13 +724,10 @@ namespace Krypton.Toolkit
                         {
                             // Right Border
                             graphics.DrawLine(cellBorderPen, cellBounds.Right - borderThickness, cellBounds.Top, cellBounds.Right - borderThickness, cellBounds.Bottom);
-
                             // Left Border
                             graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Top, cellBounds.Left, cellBounds.Bottom);
-
                             // Top Border
                             graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Top, cellBounds.Right, cellBounds.Top);
-
                             // Bottom Border
                             graphics.DrawLine(cellBorderPen, cellBounds.Left, cellBounds.Bottom - borderThickness, cellBounds.Right, cellBounds.Bottom - borderThickness);
                         }

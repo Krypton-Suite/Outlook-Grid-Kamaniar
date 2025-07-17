@@ -6,21 +6,8 @@
     internal class KryptonAllInOneGridActionList : DesignerActionList
     {
         #region Instance Fields
-        private readonly KryptonAllInOneGridDesigner _designer;
         private readonly KryptonAllInOneGrid _allInOneGrid;
         private readonly IComponentChangeService? _service;
-        private DesignerActionUIService? _actionUIService; // Cache the UI service
-
-        // Private fields for DesignerVerbs and their dynamic text
-        private DesignerVerb _dataHeaderVisibleVerb;
-        private string _dataHeaderVisibleText;
-        private DesignerVerb _groupBoxVisibleVerb;
-        private string _groupBoxVisibleText;
-        private DesignerVerb _searchToolBarVisibleVerb;
-        private string _searchToolBarVisibleText;
-        private DesignerVerb _enableOutlookGridDragDropVerb; // NEW: Verb for drag-drop toggle
-        private string _enableOutlookGridDragDropText;       // NEW: Text for drag-drop toggle
-
         #endregion
 
         #region Identity
@@ -31,159 +18,196 @@
         public KryptonAllInOneGridActionList(KryptonAllInOneGridDesigner owner)
             : base(owner.Component)
         {
-            _designer = owner;
             _allInOneGrid = (owner.Component as KryptonAllInOneGrid)!;
             _service = GetService(typeof(IComponentChangeService)) as IComponentChangeService;
-            _actionUIService = GetService(typeof(DesignerActionUIService)) as DesignerActionUIService;
-        }
-        #endregion
-
-        #region Public Override
-        /// <summary>
-        /// Returns the collection of DesignerActionItem objects contained in the list.
-        /// </summary>
-        /// <returns>A DesignerActionItem array that contains the items in this list.</returns>
-        public override DesignerActionItemCollection GetSortedActionItems()
-        {
-            var actions = new DesignerActionItemCollection();
-
-            if (_allInOneGrid != null)
-            {
-                // Get current visibility states and drag state to set dynamic text for verbs
-                var groupBoxCurrentlyVisible = _allInOneGrid.ShowGroupBox;
-                var searchToolBarCurrentlyVisible = _allInOneGrid.ShowSearchToolBar;
-
-                // Decide on the initial text values for the verbs
-                _groupBoxVisibleText = groupBoxCurrentlyVisible ? "Hide Group Box" : "Show Group Box";
-                _searchToolBarVisibleText = searchToolBarCurrentlyVisible ? "Hide Search Toolbar" : "Show Search Toolbar";
-                
-
-                // Create the DesignerVerbs with their respective handlers
-                _groupBoxVisibleVerb = new DesignerVerb(_groupBoxVisibleText, OnGroupBoxVisibleClick);
-                _searchToolBarVisibleVerb = new DesignerVerb(_searchToolBarVisibleText, OnSearchToolBarVisibleClick);
-
-                // Add Group Box Configuration actions
-                actions.Add(new DesignerActionHeaderItem("Group Box Configuration"));
-                actions.Add(new KryptonDesignerActionItem(_groupBoxVisibleVerb, "Group Box Configuration"));
-
-
-                // Add Search Toolbar Configuration actions
-                actions.Add(new DesignerActionHeaderItem("Search Toolbar Configuration"));
-                actions.Add(new KryptonDesignerActionItem(_searchToolBarVisibleVerb, "Search Toolbar Configuration"));
-
-            }
-
-            return actions;
-        }
-        #endregion
-
-        #region Implementation
-
-        private void OnGroupBoxVisibleClick(object? sender, EventArgs e)
-        {
-            // Use the public ShowGroupBox property for notification and serialization
-            var newVisible = !_allInOneGrid.ShowGroupBox; // Use public property
-
-            PropertyDescriptor? showGroupBoxProp = TypeDescriptor.GetProperties(_allInOneGrid)?["ShowGroupBox"];
-
-            _service?.OnComponentChanging(_allInOneGrid, showGroupBoxProp);
-            _allInOneGrid.ShowGroupBox = newVisible;
-            _service?.OnComponentChanged(_allInOneGrid, showGroupBoxProp, null, null);
-
-            _actionUIService?.Refresh(_allInOneGrid);
-        }
-
-        private void OnSearchToolBarVisibleClick(object? sender, EventArgs e)
-        {
-            // Use the public ShowSearchToolBar property for notification and serialization
-            var newVisible = !_allInOneGrid.ShowSearchToolBar; // Use public property
-
-            PropertyDescriptor? showSearchToolBarProp = TypeDescriptor.GetProperties(_allInOneGrid)?["ShowSearchToolBar"];
-
-            _service?.OnComponentChanging(_allInOneGrid, showSearchToolBarProp);
-            _allInOneGrid.ShowSearchToolBar = newVisible;
-            _service?.OnComponentChanged(_allInOneGrid, showSearchToolBarProp, null, null);
-
-            _actionUIService?.Refresh(_allInOneGrid);
-        }
-
-        // The drag-drop toggle is now handled by the EnableOutlookGridDragDrop property,
-        // so this verb handler is no longer needed.
-        // private void OnEnableOutlookGridDragDropClick(object? sender, EventArgs e)
-        // {
-        //     // Toggle the internal designer state
-        //     EnableOutlookGridDragDrop = !EnableOutlookGridDragDrop;
-        // }
-
-        #endregion
-    }
-}
-
-/*namespace Krypton.Toolkit
-{
-    /// <summary>
-    /// Provides the smart tag actions for the KryptonAllInOneGrid designer.
-    /// </summary>
-    internal class KryptonAllInOneGridActionList : DesignerActionList
-    {
-        #region Instance Fields
-        private readonly KryptonAllInOneGridDesigner _designer;
-        private readonly KryptonAllInOneGrid _allInOneGrid;
-        private readonly IComponentChangeService? _service;
-        private DesignerActionUIService? _actionUIService; // Cache the UI service
-
-        // Private fields for DesignerVerbs and their dynamic text, mirroring KryptonHeaderGroupActionList
-        private DesignerVerb _dataHeaderVisibleVerb;
-        private string _dataHeaderVisibleText;
-        private DesignerVerb _groupBoxVisibleVerb;
-        private string _groupBoxVisibleText;
-        private DesignerVerb _searchToolBarVisibleVerb;
-        private string _searchToolBarVisibleText;
-
-        #endregion
-
-        #region Identity
-        /// <summary>
-        /// Initializes a new instance of the <see cref="KryptonAllInOneGridActionList"/> class.
-        /// </summary>
-        /// <param name="owner">Designer that owns this action list instance.</param>
-        public KryptonAllInOneGridActionList(KryptonAllInOneGridDesigner owner)
-            : base(owner.Component)
-        {
-            _designer = owner;
-            _allInOneGrid = (owner.Component as KryptonAllInOneGrid)!;
-            _service = GetService(typeof(IComponentChangeService)) as IComponentChangeService;
-            _actionUIService = GetService(typeof(DesignerActionUIService)) as DesignerActionUIService;
         }
         #endregion
 
         #region Public Properties
 
         /// <summary>
-        /// Gets or sets a value indicating whether new controls can be dragged onto the control's OutlookGrid panel.
+        /// Gets or sets a value indicating whether the associated <see cref="KryptonOutlookGridGroupBox"/> is visible.
+        /// This property acts as a proxy for the control's actual ShowGroupBox property.
         /// </summary>
-        public bool EnableOutlookGridDragDrop
+        public bool ShowGroupBox
         {
-            get => _designer.EnableOutlookGridDragging;
-            set => _designer.EnableOutlookGridDragging = value;
+            get => _allInOneGrid.ShowGroupBox;
+            set
+            {
+                if (_allInOneGrid.ShowGroupBox != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid, null, _allInOneGrid.ShowGroupBox, value);
+                    _allInOneGrid.ShowGroupBox = value;
+                }
+            }
         }
 
         /// <summary>
-        /// Gets and sets the heading text for the DataHeader.
+        /// Gets or sets a value indicating whether the search toolbar is visible.
+        /// This property acts as a proxy for the control's actual ShowSearchToolBar property.
         /// </summary>
-        public string DataHeaderHeading
+        public bool ShowSearchToolBar
         {
-            get => _allInOneGrid.DataHeader?.Values.Heading ?? string.Empty;
+            get => _allInOneGrid.ShowSearchToolBar;
             set
             {
-                if (_allInOneGrid.DataHeader != null)
+                if (_allInOneGrid.ShowSearchToolBar != value)
                 {
-                    // Get the PropertyDescriptor for the DataHeader property on the _allInOneGrid itself
-                    PropertyDescriptor? dataHeaderProp = TypeDescriptor.GetProperties(_allInOneGrid)?["DataHeader"];
+                    _service?.OnComponentChanged(_allInOneGrid, null, _allInOneGrid.ShowSearchToolBar, value);
+                    _allInOneGrid.ShowSearchToolBar = value;
+                }
+            }
+        }
 
-                    _service?.OnComponentChanging(_designer.Component, dataHeaderProp);
-                    _allInOneGrid.DataHeader.Values.Heading = value;
-                    _service?.OnComponentChanged(_designer.Component, dataHeaderProp, null, null);
+        /// <summary>
+        /// Gets or sets a value indicating whether subtotal rows are visible in the OutlookGrid.
+        /// This property acts as a proxy for the OutlookGrid's ShowSubTotal property.
+        /// </summary>
+        public bool ShowSubTotal
+        {
+            get => _allInOneGrid.OutlookGrid.ShowSubTotal;
+            set
+            {
+                if (_allInOneGrid.OutlookGrid.ShowSubTotal != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid.OutlookGrid, null, _allInOneGrid.OutlookGrid.ShowSubTotal, value);
+                    _allInOneGrid.OutlookGrid.ShowSubTotal = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether grand total row is visible in the OutlookGrid.
+        /// This property acts as a proxy for the OutlookGrid's ShowGrandTotal property.
+        /// </summary>
+        public bool ShowGrandTotal
+        {
+            get => _allInOneGrid.OutlookGrid.ShowGrandTotal;
+            set
+            {
+                if (_allInOneGrid.OutlookGrid.ShowGrandTotal != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid.OutlookGrid, null, _allInOneGrid.OutlookGrid.ShowGrandTotal, value);
+                    _allInOneGrid.OutlookGrid.ShowGrandTotal = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the grand total row should be displayed at the bottom of the grid.
+        /// This property acts as a proxy for the control's actual ShowGrandTotalAtBottom property.
+        /// </summary>
+        public bool ShowGrandTotalAtBottom
+        {
+            get => _allInOneGrid.ShowGrandTotalAtBottom;
+            set
+            {
+                if (_allInOneGrid.ShowGrandTotalAtBottom != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid, null, _allInOneGrid.ShowGrandTotalAtBottom, value);
+                    _allInOneGrid.ShowGrandTotalAtBottom = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether searching is enabled on key press in the OutlookGrid.
+        /// This property acts as a proxy for the OutlookGrid's EnableSearchOnKeyPress property.
+        /// </summary>
+        public bool EnableSearchOnKeyPress
+        {
+            get => _allInOneGrid.OutlookGrid.EnableSearchOnKeyPress;
+            set
+            {
+                if (_allInOneGrid.OutlookGrid.EnableSearchOnKeyPress != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid.OutlookGrid, null, _allInOneGrid.OutlookGrid.EnableSearchOnKeyPress, value);
+                    _allInOneGrid.OutlookGrid.EnableSearchOnKeyPress = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether highlight search text is enabled in the OutlookGrid.
+        /// This property acts as a proxy for the OutlookGrid's HighlightSearchText property.
+        /// </summary>
+        public bool HighlightSearchText
+        {
+            get => _allInOneGrid.OutlookGrid.HighlightSearchText;
+            set
+            {
+                if (_allInOneGrid.OutlookGrid.HighlightSearchText != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid.OutlookGrid, null, _allInOneGrid.OutlookGrid.HighlightSearchText, value);
+                    _allInOneGrid.OutlookGrid.HighlightSearchText = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the column filter is visible in the OutlookGrid.
+        /// This property acts as a proxy for the OutlookGrid's ShowColumnFilter property.
+        /// </summary>
+        public bool ShowColumnFilter
+        {
+            get => _allInOneGrid.OutlookGrid.ShowColumnFilter;
+            set
+            {
+                if (_allInOneGrid.OutlookGrid.ShowColumnFilter != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid.OutlookGrid, null, _allInOneGrid.OutlookGrid.ShowColumnFilter, value);
+                    _allInOneGrid.OutlookGrid.ShowColumnFilter = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether live column filtering is enabled in the OutlookGrid.
+        /// This property acts as a proxy for the OutlookGrid's LiveColumnFilter property.
+        /// </summary>
+        public bool LiveColumnFilter
+        {
+            get => _allInOneGrid.OutlookGrid.LiveColumnFilter;
+            set
+            {
+                if (_allInOneGrid.OutlookGrid.LiveColumnFilter != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid.OutlookGrid, null, _allInOneGrid.OutlookGrid.LiveColumnFilter, value);
+                    _allInOneGrid.OutlookGrid.LiveColumnFilter = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether allow column context menu is enabled in the OutlookGrid.
+        /// This property acts as a proxy for the OutlookGrid's AllowColumnContextMenu property.
+        /// </summary>
+        public bool AllowColumnContextMenu
+        {
+            get => _allInOneGrid.OutlookGrid.AllowColumnContextMenu;
+            set
+            {
+                if (_allInOneGrid.OutlookGrid.AllowColumnContextMenu != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid.OutlookGrid, null, _allInOneGrid.OutlookGrid.AllowColumnContextMenu, value);
+                    _allInOneGrid.OutlookGrid.AllowColumnContextMenu = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether allow column context menu is enabled in the OutlookGrid.
+        /// This property acts as a proxy for the OutlookGrid's AllowColumnContextMenu property.
+        /// </summary>
+        public bool AutoGenerateInternalColumns
+        {
+            get => _allInOneGrid.OutlookGrid.AutoGenerateInternalColumns;
+            set
+            {
+                if (_allInOneGrid.OutlookGrid.AutoGenerateInternalColumns != value)
+                {
+                    _service?.OnComponentChanged(_allInOneGrid.OutlookGrid, null, _allInOneGrid.OutlookGrid.AutoGenerateInternalColumns, value);
+                    _allInOneGrid.OutlookGrid.AutoGenerateInternalColumns = value;
                 }
             }
         }
@@ -201,97 +225,36 @@
 
             if (_allInOneGrid != null)
             {
-                // Get current visibility states to set dynamic text for verbs
-                var dataHeaderCurrentlyVisible = _allInOneGrid.ShowHeader;
-                var groupBoxCurrentlyVisible = _allInOneGrid.GroupBox?.Visible ?? false;
-                var searchToolBarCurrentlyVisible = _allInOneGrid.SearchToolBar?.Visible ?? false;
-
-                // Decide on the initial text values for the verbs
-                _dataHeaderVisibleText = dataHeaderCurrentlyVisible ? "Hide Data Header" : "Show Data Header";
-                _groupBoxVisibleText = groupBoxCurrentlyVisible ? "Hide Group Box" : "Show Group Box";
-                _searchToolBarVisibleText = searchToolBarCurrentlyVisible ? "Hide Search Toolbar" : "Show Search Toolbar";
-
-                // Create the DesignerVerbs with their respective handlers
-                _dataHeaderVisibleVerb = new DesignerVerb(_dataHeaderVisibleText, OnDataHeaderVisibleClick);
-                _groupBoxVisibleVerb = new DesignerVerb(_groupBoxVisibleText, OnGroupBoxVisibleClick);
-                _searchToolBarVisibleVerb = new DesignerVerb(_searchToolBarVisibleText, OnSearchToolBarVisibleClick);
-
-                // Add Header Configuration actions
-                actions.Add(new DesignerActionHeaderItem("Header Configuration"));
-                actions.Add(new DesignerActionPropertyItem(
-                    nameof(DataHeaderHeading),
-                    "Header Text",
-                    "Header Configuration",
-                    "Sets the heading text for the Data Header."
-                ));
-                actions.Add(new KryptonDesignerActionItem(_dataHeaderVisibleVerb, "Header Configuration")); // Use KryptonDesignerActionItem
-
-
                 // Add Group Box Configuration actions
                 actions.Add(new DesignerActionHeaderItem("Group Box Configuration"));
-                actions.Add(new KryptonDesignerActionItem(_groupBoxVisibleVerb, "Group Box Configuration"));
-
+                actions.Add(new DesignerActionPropertyItem(nameof(ShowGroupBox), "Show Group Box", "Group Box Configuration", "Controls the visibility of the Group Box."));
 
                 // Add Search Toolbar Configuration actions
                 actions.Add(new DesignerActionHeaderItem("Search Toolbar Configuration"));
-                actions.Add(new KryptonDesignerActionItem(_searchToolBarVisibleVerb, "Search Toolbar Configuration"));
+                actions.Add(new DesignerActionPropertyItem(nameof(ShowSearchToolBar), "Show Search Toolbar", "Search Toolbar Configuration", "Controls the visibility of the Search Toolbar."));
+
+                // Add Total Row Configuration actions
+                actions.Add(new DesignerActionHeaderItem("Summary Configuration"));
+                actions.Add(new DesignerActionPropertyItem(nameof(ShowSubTotal), "Show Sub Totals", "Summary Configuration", "Controls the visibility of sub total rows."));
+                actions.Add(new DesignerActionPropertyItem(nameof(ShowGrandTotal), "Show Grand Totals", "Summary Configuration", "Controls the visibility of grand total rows."));
+                actions.Add(new DesignerActionPropertyItem(nameof(ShowGrandTotalAtBottom), "Show Grand Total at Bottom", "Summary Configuration", "Controls the visibility of the summary grid."));
+
+                // Add Column Filtering actions
+                actions.Add(new DesignerActionHeaderItem("Searching And Filtering"));
+                actions.Add(new DesignerActionPropertyItem(nameof(EnableSearchOnKeyPress), "Enable Search on Key Press", "Searching And Filtering", "Enables or disables search functionality on key press."));
+                actions.Add(new DesignerActionPropertyItem(nameof(HighlightSearchText), "Highlight Search Text", "Searching And Filtering", "Enables or disables paint search text functionality on search."));
+                actions.Add(new DesignerActionPropertyItem(nameof(ShowColumnFilter), "Show Column Filter", "Searching And Filtering", "Controls the visibility of the column filter."));
+                actions.Add(new DesignerActionPropertyItem(nameof(LiveColumnFilter), "Enable Live Column Filter", "Searching And Filtering", "Enables or disables live column filtering."));
+
+                // Add General Configuration actions
+                actions.Add(new DesignerActionHeaderItem("General Configuration"));
+                actions.Add(new DesignerActionPropertyItem(nameof(AllowColumnContextMenu), "Allow Column Context Menu", "General Configuration", "Enables or disables  columns context menu."));
+                actions.Add(new DesignerActionPropertyItem(nameof(AutoGenerateInternalColumns), "Auto Generate Internal Columns", "General Configuration", "Enables or disables auto generate internal columns"));
+
             }
 
             return actions;
         }
         #endregion
-
-        #region Implementation
-
-        private void OnDataHeaderVisibleClick(object? sender, EventArgs e)
-        {
-            // The new visible value should be the opposite of the current value
-            var newVisible = !_allInOneGrid.ShowHeader;
-            
-            PropertyDescriptor? dataHeaderProp = TypeDescriptor.GetProperties(_allInOneGrid)?["ShowHeader"];
-
-            _service?.OnComponentChanging(_designer.Component, dataHeaderProp);
-            _allInOneGrid.ShowHeader = newVisible;
-            _service?.OnComponentChanged(_designer.Component, dataHeaderProp, null, null);
-
-            // Refresh the smart tag UI to reflect the updated text
-            _actionUIService?.Refresh(_designer.Component);
-
-        }
-
-        private void OnGroupBoxVisibleClick(object? sender, EventArgs e)
-        {
-            var newVisible = !(_allInOneGrid.GroupBox?.Visible ?? false);
-
-            if (_allInOneGrid.GroupBox != null)
-            {
-                PropertyDescriptor? groupBoxProp = TypeDescriptor.GetProperties(_allInOneGrid)?["GroupBox"];
-
-                _service?.OnComponentChanging(_designer.Component, groupBoxProp);
-                _allInOneGrid.GroupBox.Visible = newVisible;
-                _service?.OnComponentChanged(_designer.Component, groupBoxProp, null, null);
-
-                _actionUIService?.Refresh(_designer.Component);
-            }
-        }
-
-        private void OnSearchToolBarVisibleClick(object? sender, EventArgs e)
-        {
-            var newVisible = !(_allInOneGrid.SearchToolBar?.Visible ?? false);
-
-            if (_allInOneGrid.SearchToolBar != null)
-            {
-                PropertyDescriptor? searchToolBarProp = TypeDescriptor.GetProperties(_allInOneGrid)?["SearchToolBar"];
-
-                _service?.OnComponentChanging(_designer.Component, searchToolBarProp);
-                _allInOneGrid.SearchToolBar.Visible = newVisible;
-                _service?.OnComponentChanged(_designer.Component, searchToolBarProp, null, null);
-
-                _actionUIService?.Refresh(_designer.Component);
-            }
-        }
-
-        #endregion
     }
 }
-*/
