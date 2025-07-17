@@ -71,6 +71,7 @@ namespace Krypton.Toolkit
         private KryptonContextMenuSeparator _menuSeparator2 = default!;
         private KryptonContextMenuItem _menuBestFitColumn = default!;
         private KryptonContextMenuItem _menuBestFitAllColumns = default!;
+        private KryptonContextMenuItem _menuFitColumnsToWidth = default!;
         private KryptonContextMenuSeparator _menuSeparator3 = default!;
         private KryptonContextMenuItem _menuVisibleColumns = default!;
         private KryptonContextMenuItem _menuGroupInterval = default!;
@@ -83,7 +84,7 @@ namespace Krypton.Toolkit
         private int _colSelected = 1;         //for menu
         private const int FORMATTING_BAR_SOLID_GRADIENT_SEP_INDEX = 3;
 
-        // NEW: Aggregation-specific menu items
+        // Aggregation-specific menu items
         private KryptonContextMenuItem _menuAggregationNumeric = default!;
         private KryptonContextMenuItem _menuAggregationNonNumeric = default!;
         private KryptonContextMenuItem _menuFilter = default!;
@@ -780,7 +781,7 @@ namespace Krypton.Toolkit
                 }
             }
             base.OnCellPainting(e);
-            if (_highlightSearchText || _enableSearchOnKeyPress || this.ReadOnly)
+            if (_highlightSearchText && _enableSearchOnKeyPress && this.ReadOnly)
             {
                 PaintSearchText(e, SearchText);
             }
@@ -2261,6 +2262,9 @@ namespace Krypton.Toolkit
                 _menuConditionalFormatting.Items.Add(conditionalFormattingItems);
                 #endregion Conditional formatting
 
+
+                _menuFitColumnsToWidth = new KryptonContextMenuItem("Fit To Width (all columns)", GenericImageResources.fit_to_size, OnFitColumnsToWidth);
+
                 // --- NEW: AGGREGATION MENU ITEM CREATION (Done once) ---
                 // Create a sub-items collection for aggregations
                 KryptonContextMenuItem aggNone = new(KryptonOutlookGridAggregationType.None.ToString(), null, OnAggregationChange) { Tag = KryptonOutlookGridAggregationType.None };
@@ -2305,6 +2309,7 @@ namespace Krypton.Toolkit
                     _menuSeparator2,
                     _menuBestFitColumn,
                     _menuBestFitAllColumns,
+                    _menuFitColumnsToWidth,
                     _menuSeparator3,
                     _menuVisibleColumns,
                     _menuSeparator5,
@@ -3177,7 +3182,7 @@ namespace Krypton.Toolkit
                         sRow.IsSummaryRow = true;
                         sRow.CreateCells(_summaryGrid!, row.Cells.Cast<DataGridViewCell>().Select(c => c.Value).ToArray()!);
                         _summaryGrid.Rows.Add(sRow);
-                        AdjustSummaryGridHeight();
+                        AdjustSummaryGridSize();
                     }
                     else
                     {
@@ -5155,7 +5160,7 @@ namespace Krypton.Toolkit
             if (_summaryGrid != null && _summaryGrid.ColumnCount > 0 && e.Column.Index < _summaryGrid.ColumnCount)
             {
                 _summaryGrid.Columns[e.Column.Index].Width = this.Columns[e.Column.Index].Width;
-                AdjustSummaryGridHeight();
+                AdjustSummaryGridSize();
             }
         }
 
@@ -5174,12 +5179,12 @@ namespace Krypton.Toolkit
         private void KryptonOutlookGrid_RowHeadersWidthChanged(object? sender, EventArgs e)
         {
             _summaryGrid?.RowHeadersWidth = this.RowHeadersWidth;
-            AdjustSummaryGridHeight();
+            AdjustSummaryGridSize();
         }
 
         private void KryptonOutlookGrid_Layout(object? sender, LayoutEventArgs e)
         {
-            AdjustSummaryGridHeight();
+            AdjustSummaryGridSize();
         }
 
         /// <summary>
@@ -5204,7 +5209,18 @@ namespace Krypton.Toolkit
             _summaryGrid.TabStop = false;
             _summaryGrid.Rows.Clear();
             _summaryGrid.Columns.Clear();
+            ConfigSummaryGridState();
             _summaryGrid.ResumeLayout();
+        }
+
+        private void ConfigSummaryGridState()
+        {
+            if (_summaryGrid == null) return;
+            PaletteState state = PaletteState.Normal;
+            _summaryGrid.RowHeadersDefaultCellStyle.Font = StateCommon.HeaderRow.Content.Font ?? StateCommon.HeaderRow.Content.GetContentShortTextFont(state);
+            _summaryGrid.RowHeadersDefaultCellStyle.Padding = StateCommon.HeaderRow.Content.GetBorderContentPadding(null, state);
+            _summaryGrid.RowHeadersDefaultCellStyle.BackColor = StateNormal.HeaderRow.Back.GetBackColor1(state);
+            _summaryGrid.RowHeadersDefaultCellStyle.ForeColor = StateNormal.HeaderRow.Content.GetContentShortTextColor1(state);
         }
 
         /// <summary>
@@ -5243,14 +5259,15 @@ namespace Krypton.Toolkit
         /// Adjusts the height of the summary grid to fit its content.
         /// It calculates the preferred height of the first row and sets the summary grid's height accordingly.
         /// </summary>
-        private void AdjustSummaryGridHeight()
+        private void AdjustSummaryGridSize()
         {
             // The previous _summaryGrid (now this.SummaryGrid)
             if (_summaryGrid != null && _summaryGrid.Rows.Count > 0)
             {
                 // Calculate the preferred height of the summary grid row
-                var sHeight = (_summaryGrid.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
-                _summaryGrid.Height = sHeight;
+                /*var sHeight = (_summaryGrid.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
+                _summaryGrid.Height = sHeight;*/
+                _summaryGrid.Height = _summaryGrid.Rows[0].Height;
                 int mainGridScrollbarWidth = this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
                 if (mainGridScrollbarWidth > 0)
                 {
@@ -5265,37 +5282,11 @@ namespace Krypton.Toolkit
                 {
                     _summaryGrid.Columns.Remove("ColScroll");
                 }
-
                 _summaryGrid.ClearSelection();
                 // Invalidate and Refresh are good, but also ensure layout passes are triggered.
-                _summaryGrid.PerformLayout(); // Force immediate layout recalculation for summary grid
-                _summaryGrid.Invalidate();
-                _summaryGrid.Refresh();
-
-                if (this.Parent is KryptonAllInOneGrid parentAllInOneGrid)
-                {
-                    //parentAllInOneGrid.DesignerOutlookGridHeightChanged();
-                }
-
+                //_summaryGrid.PerformLayout();
             }
         }
-
-        /*private void AdjustSummaryGridHeight()
-        {
-            if (_summaryGrid != null && _summaryGrid.Rows.Count > 0)
-            {
-                var sHeight = (_summaryGrid!.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
-                //_summaryGrid.SuspendLayout();
-                _summaryGrid.Height = sHeight;
-
-                int rightPadding = this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
-                _summaryGrid.Padding = new Padding(0, 0, rightPadding, 0);
-
-                //_summaryGrid.ResumeLayout(true);
-                _summaryGrid.ClearSelection();
-
-            }
-        }*/
 
         /// <summary>
         /// Configures and populates a 'total' DataGridView based on the data and column settings of a 'parent' DataGridView.
@@ -6344,6 +6335,7 @@ namespace Krypton.Toolkit
             {
                 _searchToolBar?.SetColumns(this.Columns);
                 _summaryGrid?.Columns[e.Column.Index].Visible = this.Columns[e.Column.Index].Visible;
+                AdjustSummaryGridSize();
             }
             base.OnColumnStateChanged(e);
         }
@@ -6607,6 +6599,20 @@ namespace Krypton.Toolkit
         #region Adjust Columns Width
 
         /// <summary>
+        /// Handles the event that triggers resizing all columns to proportionally fill the available width of the DataGridView.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the control or object that raised it.</param>
+        /// <param name="e">An <see cref="EventArgs"/> object that contains the event data.</param>
+        /// <remarks>
+        /// This method simply calls the <see cref="FitColumnsToWidth(bool, int)"/> method with <c>allowToDecrease</c> set to <c>true</c>,
+        /// ensuring that columns are adjusted to fit the available space, even if it means shrinking them.
+        /// </remarks>
+        private void OnFitColumnsToWidth(object? sender, EventArgs e)
+        {
+            FitColumnsToWidth(true);
+        }
+
+        /// <summary>
         /// Adjusts the width of the visible columns in the DataGridView to proportionally fit the control's client width.
         /// </summary>
         /// <param name="allowToDecrease">
@@ -6638,18 +6644,12 @@ namespace Krypton.Toolkit
         /// The method suppresses layout updates during the resizing process for better performance.
         /// </para>
         /// </remarks>
-        public void AutoResizeColumnsToFit(bool allowToDecrease = false, int additionalPadding = 0)
+        public void FitColumnsToWidth(bool allowToDecrease = false, int additionalPadding = 0)
         {
             if (additionalPadding < 0) throw new ArgumentOutOfRangeException(nameof(additionalPadding), "Additional padding must be non-negative.");
 
             // Dynamically determine the vertical scrollbar width
             int actualVScrollbarWidth = 5;//  10;
-            /*VScrollBar? vScrollBar = this.Controls.OfType<VScrollBar>().FirstOrDefault();
-            if (vScrollBar != null && vScrollBar.Visible)
-            {
-                actualVScrollbarWidth += vScrollBar.Width;
-            }*/
-
             actualVScrollbarWidth += this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
 
             // Calculate total width of all visible columns
@@ -6683,10 +6683,9 @@ namespace Krypton.Toolkit
                     this.ColumnWidthChanged += KryptonOutlookGrid_ColumnWidthChanged;
                 this.ResumeLayout();
                 _summaryGrid?.ResumeLayout();
-                AdjustSummaryGridHeight();
+                AdjustSummaryGridSize();
             }
         }
-
 
         #endregion Adjust Columns Width
 

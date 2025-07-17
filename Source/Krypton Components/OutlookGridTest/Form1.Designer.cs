@@ -53,7 +53,7 @@
             this.BtnLoadDictionary = new Krypton.Toolkit.KryptonButton();
             this.BtnSelectionMode = new Krypton.Toolkit.KryptonButton();
             this.kryptonTableLayoutPanel1 = new Krypton.Toolkit.KryptonTableLayoutPanel();
-            this.kryptonExtraGrid1 = new Krypton.Toolkit.KryptonExtraGrid();
+            this.kryptonExtraGrid1 = new Krypton.Toolkit.KryptonAllInOneGrid();
             this.buttonSpecHeaderGroup1 = new Krypton.Toolkit.ButtonSpecHeaderGroup();
             this._textBox = new Krypton.Toolkit.KryptonTextBox();
             ((System.ComponentModel.ISupportInitialize)(this.outlookGrid1)).BeginInit();
@@ -327,7 +327,7 @@
         private Krypton.Toolkit.KryptonButton BtnSelectionMode;
         private Krypton.Toolkit.KryptonTableLayoutPanel kryptonTableLayoutPanel1;
         private Krypton.Toolkit.KryptonTextBox _textBox;
-        private Krypton.Toolkit.KryptonExtraGrid kryptonExtraGrid1;
+        private Krypton.Toolkit.KryptonAllInOneGrid kryptonExtraGrid1;
         private Krypton.Toolkit.ButtonSpecHeaderGroup buttonSpecHeaderGroup1;
     }
 }

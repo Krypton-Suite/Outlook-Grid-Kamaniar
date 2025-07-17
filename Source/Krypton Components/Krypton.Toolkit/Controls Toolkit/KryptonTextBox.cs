@@ -577,8 +577,7 @@ namespace Krypton.Toolkit
         /// <summary>
         /// Gets and sets if the control is in the tab chain.
         /// </summary>
-        //[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        [DefaultValue(true)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public new bool TabStop
         {
             get => _textBox.TabStop;

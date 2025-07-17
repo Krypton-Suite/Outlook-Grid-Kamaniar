@@ -1,5 +1,4 @@
-﻿
-namespace Krypton.Toolkit
+﻿namespace Krypton.Toolkit
 {
     /// <summary>
     /// Represents a composite control that integrates a <see cref="KryptonOutlookGrid"/>,
@@ -245,7 +244,7 @@ namespace Krypton.Toolkit
             // Register events after controls are set up
             OutlookGrid.RegisterGroupBoxEvents();
             OutlookGrid.OnSearchCompleted += OutlookGrid_OnSearchCompleted;
-
+            SummaryGrid.RowHeightChanged += SummaryGrid_RowHeightChanged;
         }
 
         #endregion Identity
@@ -269,6 +268,29 @@ namespace Krypton.Toolkit
             this.HeaderVisibleSecondary = !string.IsNullOrEmpty(OutlookGrid.SearchText);
             // Set the secondary header's heading to the current search text
             this.ValuesSecondary.Heading = OutlookGrid.SearchText;
+        }
+
+        /// <summary>
+        /// Handles the <see cref="DataGridView.RowHeightChanged"/> event for the <see cref="SummaryGrid"/>.
+        /// This method adjusts the height of the <see cref="SummaryGrid"/> to match the height of its first row.
+        /// It also suspends and resumes layout for the grid, its parent panel, and the form
+        /// to prevent flickering during the height adjustment.
+        /// </summary>
+        /// <param name="sender">The source of the event, typically the <see cref="SummaryGrid"/>.</param>
+        /// <param name="e">A <see cref="DataGridViewRowEventArgs"/> that contains the event data,
+        /// providing information about the row whose height has changed.</param>
+        private void SummaryGrid_RowHeightChanged(object? sender, DataGridViewRowEventArgs e)
+        {
+            this.SummaryGrid.SuspendLayout();
+            this.Panel.SuspendLayout();
+            this.SuspendLayout();
+
+            // Set the height of the entire DataGridView to match the height of its first row.
+            SummaryGrid.Height = SummaryGrid.Rows[0].Height;
+
+            this.SummaryGrid.ResumeLayout();
+            this.Panel.ResumeLayout();
+            this.ResumeLayout();
         }
 
         /// <summary>

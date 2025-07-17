@@ -24,11 +24,12 @@ namespace OutlookGridTest
         public Form2()
         {
             InitializeComponent();
-            kryptonExtraGrid1.OutlookGrid.OnGridColumnCreating += OutlookGrid_OnGridColumnCreating;
-            kryptonExtraGrid1.OutlookGrid.OnInternalColumnCreating += OutlookGrid_OnInternalColumnCreating;
 
             kryptonAllInOneGrid1.OutlookGrid.OnGridColumnCreating += OutlookGrid_OnGridColumnCreating;
             kryptonAllInOneGrid1.OutlookGrid.OnInternalColumnCreating += OutlookGrid_OnInternalColumnCreating;
+
+            kryptonOutlookGrid1.OnGridColumnCreating += OutlookGrid_OnGridColumnCreating;
+            kryptonOutlookGrid1.OnInternalColumnCreating += OutlookGrid_OnInternalColumnCreating;
 
             outlookGrid1.OnGridColumnCreating += OutlookGrid_OnGridColumnCreating;
             outlookGrid1.OnInternalColumnCreating += OutlookGrid_OnInternalColumnCreating;
@@ -40,7 +41,8 @@ namespace OutlookGridTest
 
         private void Form2_Load(object sender, EventArgs e)
         {
-            LoadDataTableData();
+            List<ProductDto> dataSource = GenerateProductData(_numberOfProductsToGenerate);
+            AfterSetDataSource(dataSource);
             SetButtonText();
         }
 
@@ -107,6 +109,25 @@ namespace OutlookGridTest
 
         #endregion Common Events
 
+        #region Button Spec
+
+        private void buttonSpecHeaderGroup2_Click(object sender, EventArgs e)
+        {
+            LoadDataTableData();
+        }
+
+        private void buttonSpecHeaderGroup1_Click(object sender, EventArgs e)
+        {
+            KryptonMessageBox.Show("Data export successfully to Path: XXX.");
+        }
+
+        private void buttonSpecHeaderGroup3_Click(object sender, EventArgs e)
+        {
+            KryptonMessageBox.Show("Configuration saved successfully.");
+        }
+
+        #endregion Button Spec
+
         #region Buttons
 
         private void BtnShowSubTotal_Click(object sender, EventArgs e)
@@ -159,12 +180,6 @@ namespace OutlookGridTest
             SetButtonText();
         }
 
-        private void BtnShowAllInOneGridHeader_Click(object sender, EventArgs e)
-        {
-            kryptonAllInOneGrid1.ShowHeader = !kryptonAllInOneGrid1.DataHeader.Visible;
-            SetButtonText();
-        }
-
         private void BtnLoadDataTable_Click(object sender, EventArgs e)
         {
             LoadDataTableData();
@@ -191,10 +206,10 @@ namespace OutlookGridTest
             var idCol = outlookGrid1.FindFromColumnName("Id")!;
             idCol?.AvailableInContextMenu = isHidden;
 
-            idCol = kryptonAllInOneGrid1.OutlookGrid.FindFromColumnName("Id")!;
+            idCol = kryptonOutlookGrid1.FindFromColumnName("Id")!;
             idCol?.AvailableInContextMenu = isHidden;
 
-            idCol = kryptonExtraGrid1.OutlookGrid.FindFromColumnName("Id")!;
+            idCol = kryptonAllInOneGrid1.OutlookGrid.FindFromColumnName("Id")!;
             idCol?.AvailableInContextMenu = isHidden;
 
             if (isHidden)
@@ -235,20 +250,15 @@ namespace OutlookGridTest
             {
                 BtnSelectionMode.Text = "Full Row Select";
             }
-            if (kryptonAllInOneGrid1.DataHeader.Visible)
-                BtnShowAllInOneGridHeader.Text = "Hide Header (AllIn1Grid)";
-            else
-                BtnShowAllInOneGridHeader.Text = "Show Header (AllIn1Grid)";
 
-            kryptonAllInOneGrid1.OutlookGrid.FillMode = kryptonExtraGrid1.OutlookGrid.FillMode = outlookGrid1.FillMode;
-            kryptonAllInOneGrid1.OutlookGrid.ShowSubTotal = kryptonExtraGrid1.OutlookGrid.ShowSubTotal = outlookGrid1.ShowSubTotal;
-            kryptonAllInOneGrid1.OutlookGrid.ShowGrandTotal = kryptonExtraGrid1.OutlookGrid.ShowGrandTotal = outlookGrid1.ShowGrandTotal;
-            kryptonAllInOneGrid1.OutlookGrid.ShowColumnFilter = kryptonExtraGrid1.OutlookGrid.ShowColumnFilter = outlookGrid1.ShowColumnFilter;
-            kryptonAllInOneGrid1.OutlookGrid.EnableSearchOnKeyPress = kryptonExtraGrid1.OutlookGrid.EnableSearchOnKeyPress = outlookGrid1.EnableSearchOnKeyPress;
-            kryptonAllInOneGrid1.OutlookGrid.HighlightSearchText = kryptonExtraGrid1.OutlookGrid.HighlightSearchText = outlookGrid1.HighlightSearchText;
-            kryptonAllInOneGrid1.OutlookGrid.SelectionMode = kryptonExtraGrid1.OutlookGrid.SelectionMode = outlookGrid1.SelectionMode;
-            kryptonAllInOneGrid1.OutlookGrid.ReadOnly = kryptonExtraGrid1.OutlookGrid.ReadOnly = outlookGrid1.ReadOnly;
-
+            kryptonAllInOneGrid1.OutlookGrid.FillMode = kryptonOutlookGrid1.FillMode = outlookGrid1.FillMode;
+            kryptonAllInOneGrid1.OutlookGrid.ShowSubTotal = kryptonOutlookGrid1.ShowSubTotal = outlookGrid1.ShowSubTotal;
+            kryptonAllInOneGrid1.OutlookGrid.ShowGrandTotal = kryptonOutlookGrid1.ShowGrandTotal = outlookGrid1.ShowGrandTotal;
+            kryptonAllInOneGrid1.OutlookGrid.ShowColumnFilter = kryptonOutlookGrid1.ShowColumnFilter = outlookGrid1.ShowColumnFilter;
+            kryptonAllInOneGrid1.OutlookGrid.EnableSearchOnKeyPress = kryptonOutlookGrid1.EnableSearchOnKeyPress = outlookGrid1.EnableSearchOnKeyPress;
+            kryptonAllInOneGrid1.OutlookGrid.HighlightSearchText = kryptonOutlookGrid1.HighlightSearchText = outlookGrid1.HighlightSearchText;
+            kryptonAllInOneGrid1.OutlookGrid.SelectionMode = kryptonOutlookGrid1.SelectionMode = outlookGrid1.SelectionMode;
+            kryptonAllInOneGrid1.OutlookGrid.ReadOnly = kryptonOutlookGrid1.ReadOnly = outlookGrid1.ReadOnly;
         }
 
         #endregion
@@ -302,28 +312,10 @@ namespace OutlookGridTest
 
             outlookGrid1.SetDataSource(dataSource);
             //outlookGrid1.AutoResizeColumnsToFit();
-
-            kryptonExtraGrid1.OutlookGrid.SetDataSource(dataSource);
-            //kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
-
+            kryptonOutlookGrid1.SetDataSource(dataSource);
             kryptonAllInOneGrid1.OutlookGrid.SetDataSource(dataSource);
             kryptonDataGridView1.DataSource = dataSource;
-
-            // Apply formatting for the Price column
-            if (outlookGrid1.Columns.Contains("Price"))
-            {
-                outlookGrid1.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns["Price"].DefaultCellStyle.Format = "N2";
-            }
-
-            // Apply formatting after setting data source
-            if (outlookGrid1.Columns.Contains("Price"))
-            {
-                outlookGrid1.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns["Price"].DefaultCellStyle.Format = "N2";
-            }
+            AfterSetDataSource();
         }
 
         private void LoadDataTableData()
@@ -363,20 +355,10 @@ namespace OutlookGridTest
 
             outlookGrid1.SetDataSource(dataSource);
             //outlookGrid1.AutoResizeColumnsToFit();
-
-            kryptonExtraGrid1.OutlookGrid.SetDataSource(dataSource);
-            //kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
-
+            kryptonOutlookGrid1.SetDataSource(dataSource);
             kryptonAllInOneGrid1.OutlookGrid.SetDataSource(dataSource);
             kryptonDataGridView1.DataSource = dataSource;
-
-            // Apply formatting for the Price column
-            if (outlookGrid1.Columns.Contains("Price"))
-            {
-                outlookGrid1.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns["Price"].DefaultCellStyle.Format = "N2";
-            }
+            AfterSetDataSource();
         }
 
         private void LoadRawArrayData()
@@ -405,23 +387,10 @@ namespace OutlookGridTest
 
             outlookGrid1.SetDataSource(dataSource);
             //outlookGrid1.AutoResizeColumnsToFit();
-
-            kryptonExtraGrid1.OutlookGrid.SetDataSource(dataSource);
-            //kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
-
+            kryptonOutlookGrid1.SetDataSource(dataSource);
             kryptonAllInOneGrid1.OutlookGrid.SetDataSource(dataSource);
             kryptonDataGridView1.DataSource = dataSource;
-
-            // Apply formatting for the Price column (assuming column index or name)
-            // If your grid auto-generates columns from raw array, column names might not be available directly.
-            // You might need to rely on column index or inspect the generated columns.
-            // Assuming "Price" will be at index 3 based on your array structure:
-            if (outlookGrid1.Columns.Count > 3) // Check if column exists
-            {
-                outlookGrid1.Columns[3].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns[3].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns[3].DefaultCellStyle.Format = "N2";
-            }
+            AfterSetDataSource();
         }
 
         private void LoadDictionaryData()
@@ -450,19 +419,41 @@ namespace OutlookGridTest
 
             outlookGrid1.SetDataSource(dataSource);
             //outlookGrid1.AutoResizeColumnsToFit();
-
-            kryptonExtraGrid1.OutlookGrid.SetDataSource(dataSource);
-            //kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
-
+            kryptonOutlookGrid1.SetDataSource(dataSource);
             kryptonAllInOneGrid1.OutlookGrid.SetDataSource(dataSource);
             kryptonDataGridView1.DataSource = dataSource;
+            AfterSetDataSource();
+        }
+
+        private void AfterSetDataSource(object? dataSource = null)
+        {
+            if (dataSource != null)
+            {
+                outlookGrid1.SetDataSource(dataSource);
+                //outlookGrid1.AutoResizeColumnsToFit();
+                kryptonOutlookGrid1.SetDataSource(dataSource);
+                kryptonAllInOneGrid1.OutlookGrid.SetDataSource(dataSource);
+                kryptonDataGridView1.DataSource = dataSource;
+            }
 
             // Apply formatting for the Price column
-            if (outlookGrid1.Columns.Contains("UnitPrice")) // Use the key name from your dictionary
+            if (outlookGrid1.Columns.Contains("Price"))
             {
-                outlookGrid1.Columns["UnitPrice"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns["UnitPrice"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                outlookGrid1.Columns["UnitPrice"].DefaultCellStyle.Format = "N2";
+                outlookGrid1.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                outlookGrid1.Columns["Price"].DefaultCellStyle.Format = "N2";
+            }
+            if (kryptonOutlookGrid1.Columns.Contains("Price"))
+            {
+                kryptonOutlookGrid1.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                kryptonOutlookGrid1.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                kryptonOutlookGrid1.Columns["Price"].DefaultCellStyle.Format = "N2";
+            }
+            if (kryptonAllInOneGrid1.OutlookGrid.Columns.Contains("Price"))
+            {
+                kryptonAllInOneGrid1.OutlookGrid.Columns["Price"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+                kryptonAllInOneGrid1.OutlookGrid.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                kryptonAllInOneGrid1.OutlookGrid.Columns["Price"].DefaultCellStyle.Format = "N2";
             }
         }
 

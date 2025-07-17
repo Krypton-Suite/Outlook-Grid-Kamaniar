@@ -50,6 +50,24 @@
             }
         }
 
+        /// <summary>
+        ///  Gets the design-time action lists supported by the component associated with the designer.
+        /// </summary>
+        public override DesignerActionListCollection ActionLists
+        {
+            get
+            {
+                // Create a collection of action lists
+                var actionLists = new DesignerActionListCollection
+                {
+                    // Add the header group specific list
+                    new KryptonAllInOneGridActionList(this)
+                };
+
+                return actionLists;
+            }
+        }
+
         #endregion Public
 
     }

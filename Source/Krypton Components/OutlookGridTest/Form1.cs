@@ -365,10 +365,10 @@ namespace OutlookGridTest
 
             // Example of setting data for your grid
             outlookGrid1.SetDataSource(products);
-            outlookGrid1.AutoResizeColumnsToFit();
+            outlookGrid1.FitColumnsToWidth();
 
             kryptonExtraGrid1.OutlookGrid.SetDataSource(products);
-            kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
+            kryptonExtraGrid1.OutlookGrid.FitColumnsToWidth();
 
             // Apply formatting after setting data source
             if (outlookGrid1.Columns.Contains("Price"))
@@ -415,10 +415,10 @@ namespace OutlookGridTest
             }
 
             outlookGrid1.DataSource = productsTable;
-            outlookGrid1.AutoResizeColumnsToFit();
+            outlookGrid1.FitColumnsToWidth();
 
             kryptonExtraGrid1.OutlookGrid.SetDataSource(productsTable);
-            kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
+            kryptonExtraGrid1.OutlookGrid.FitColumnsToWidth();
 
             // Apply formatting for the Price column
             if (outlookGrid1.Columns.Contains("Price"))
@@ -454,10 +454,10 @@ namespace OutlookGridTest
             }
 
             outlookGrid1.SetDataSource(rawData);
-            outlookGrid1.AutoResizeColumnsToFit();
+            outlookGrid1.FitColumnsToWidth();
 
             kryptonExtraGrid1.OutlookGrid.SetDataSource(rawData);
-            kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
+            kryptonExtraGrid1.OutlookGrid.FitColumnsToWidth();
             // Apply formatting for the Price column (assuming column index or name)
             // If your grid auto-generates columns from raw array, column names might not be available directly.
             // You might need to rely on column index or inspect the generated columns.
@@ -496,10 +496,10 @@ namespace OutlookGridTest
             }
 
             outlookGrid1.SetDataSource(dictionaryData);
-            outlookGrid1.AutoResizeColumnsToFit();
+            outlookGrid1.FitColumnsToWidth();
 
             kryptonExtraGrid1.OutlookGrid.SetDataSource(dictionaryData);
-            kryptonExtraGrid1.OutlookGrid.AutoResizeColumnsToFit();
+            kryptonExtraGrid1.OutlookGrid.FitColumnsToWidth();
 
             // Apply formatting for the Price column
             if (outlookGrid1.Columns.Contains("UnitPrice")) // Use the key name from your dictionary
