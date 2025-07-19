@@ -841,7 +841,8 @@ namespace Krypton.Toolkit
                 else
                 {
                     InvalidateRow(e.RowIndex);
-                    CurrentCell = this[e.ColumnIndex, e.RowIndex];
+                    if (e.ColumnIndex > -1)
+                        CurrentCell = this[e.ColumnIndex, e.RowIndex];
                 }
             }
             else
@@ -984,6 +985,54 @@ namespace Krypton.Toolkit
                 {
                     _paletteBorder.Style = PaletteBorderStyle.HeaderPrimary;
                     renderer.RenderStandardBorder.DrawBorder(renderContext, ClientRectangle, _border, VisualOrientation.Top, PaletteState.Normal);
+                }
+            }
+
+            if (this.RowHeadersVisible)
+            {
+                // Get the graphics object from the PaintEventArgs
+                Graphics g = e.Graphics;
+
+                // Iterate through currently visible rows
+                var visibleRows = this.Rows.Cast<OutlookGridRow>().Where(r => r.Visible && r.DataGridView != null && (r.IsGroupRow || r.IsSummaryRow));
+                if (visibleRows != null)
+                {
+                    foreach (DataGridViewRow row in visibleRows)
+                    {
+                        Rectangle rowBounds = this.GetRowDisplayRectangle(row.Index, false);
+                        // If the row is not visible (e.g., scrolled out of view), skip it
+                        if (rowBounds.IsEmpty || !this.ClientRectangle.IntersectsWith(rowBounds))
+                        {
+                            continue;
+                        }
+
+                        // Calculate the fixed row header area
+                        // X is always 0 (relative to grid's client area)
+                        Rectangle rowHeaderPaintArea = new(0, rowBounds.Y, this.RowHeadersWidth, rowBounds.Height);
+
+                        // Ensure it's clipped to the visible area of the grid
+                        rowHeaderPaintArea.Intersect(this.ClientRectangle);
+
+                        // Determine selection state for the group row
+                        bool isSelected = (row.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected;
+                        if (!isSelected && this.SelectionMode != DataGridViewSelectionMode.FullRowSelect)
+                        {
+                            isSelected = this.CurrentCell?.RowIndex == row.Index;
+                        }
+                        PaletteState rowHeaderRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
+                        IPaletteBack rowHeaderPaletteBack = isSelected ? this.StateSelected.HeaderRow.Back : this.StateNormal.HeaderRow.Back;
+                        IPaletteBorder rowHeaderPaletteBorder = isSelected ? this.StateSelected.HeaderRow.Border : this.StateNormal.HeaderRow.Border;
+
+                        // --- Drawing logic for the row header (copied from OutlookGridRow) ---
+                        using (RenderContext rhRenderContext = new(this, g, rowHeaderPaintArea, this.Renderer!))
+                        {
+                            using (GraphicsPath rhPath = this.Renderer!.RenderStandardBorder.GetBackPath(rhRenderContext, rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, rowHeaderRenderingState))
+                            {
+                                this.Renderer.RenderStandardBack.DrawBack(rhRenderContext, rowHeaderPaintArea, rhPath, rowHeaderPaletteBack, VisualOrientation.Top, rowHeaderRenderingState, null);
+                            }
+                            this.Renderer.RenderStandardBorder.DrawBorder(rhRenderContext, rowHeaderPaintArea, rowHeaderPaletteBorder, VisualOrientation.Top, rowHeaderRenderingState);
+                        }
+                    }
                 }
             }
         }
@@ -5264,72 +5313,26 @@ namespace Krypton.Toolkit
             // The previous _summaryGrid (now this.SummaryGrid)
             if (_summaryGrid != null && _summaryGrid.Rows.Count > 0)
             {
-                // Calculate the preferred height of the summary grid row
-                /*var sHeight = (_summaryGrid.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
-                _summaryGrid.Height = sHeight;*/
+                /*if (_summaryGrid.Columns.Contains("ColScroll"))
+                    _summaryGrid.Columns.Remove("ColScroll");*/
                 _summaryGrid.Height = _summaryGrid.Rows[0].Height;
                 int mainGridScrollbarWidth = this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
                 if (mainGridScrollbarWidth > 0)
                 {
                     if (!_summaryGrid.Columns.Contains("ColScroll"))
                         _summaryGrid.Columns.Add("ColScroll", "");
-                    int totalVisibleWidth = _summaryGrid.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible && c.Name != "ColScroll").Sum(c => c.Width);
-                    int rowHeaderWidth = _summaryGrid.RowHeadersVisible ? _summaryGrid.RowHeadersWidth : 0;
-                    int availableWidth = _summaryGrid.Width - (rowHeaderWidth + totalVisibleWidth);
+                    int totalVisibleWidth = this.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).Sum(c => c.Width);
+                    int rowHeaderWidth = this.RowHeadersVisible ? this.RowHeadersWidth : 0;
+                    int availableWidth = this.Width - (rowHeaderWidth + totalVisibleWidth);
                     _summaryGrid.Columns["ColScroll"]?.Width = Math.Max(mainGridScrollbarWidth, availableWidth);
+                    _summaryGrid.HorizontalScrollingOffset = this.HorizontalScrollingOffset;
                 }
-                else if (_summaryGrid.Columns.Contains("ColScroll"))
+                else
                 {
-                    _summaryGrid.Columns.Remove("ColScroll");
+                    _summaryGrid.Columns["ColScroll"]?.Visible = false;
                 }
                 _summaryGrid.ClearSelection();
-                // Invalidate and Refresh are good, but also ensure layout passes are triggered.
-                //_summaryGrid.PerformLayout();
             }
-        }
-
-        /// <summary>
-        /// Configures and populates a 'total' DataGridView based on the data and column settings of a 'parent' DataGridView.
-        /// It calculates sums, averages, or counts for columns marked with specific tags.
-        /// </summary>
-        public void SetSummaryGrid()
-        {
-            if (_summaryGrid == null) return;
-
-            _summaryGrid.SuspendLayout();
-
-            // Configure totalGrid appearance and properties
-            _summaryGrid.AllowUserToAddRows = false;
-            _summaryGrid.AllowUserToDeleteRows = false;
-            _summaryGrid.ColumnHeadersVisible = false;
-            _summaryGrid.Enabled = false;
-            _summaryGrid.ReadOnly = true;
-            _summaryGrid.TabStop = false;
-            _summaryGrid.Visible = true;
-            _summaryGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            _summaryGrid.ScrollBars = ScrollBars.None;
-            _summaryGrid.RowHeadersVisible = this.RowHeadersVisible;
-            _summaryGrid.RowHeadersWidth = this.RowHeadersWidth;
-            _summaryGrid.Rows.Clear();
-            _summaryGrid.Columns.Clear();
-
-            // Add columns to totalGrid
-            foreach (DataGridViewColumn parentCol in this.Columns)
-            {
-                try
-                {
-                    var index = _summaryGrid.Columns.Add(parentCol.Name, "");
-                    _summaryGrid.Columns[index].Width = parentCol.Width;
-                    _summaryGrid.Columns[index].DisplayIndex = parentCol.DisplayIndex;
-                    _summaryGrid.Columns[index].Visible = parentCol.Visible;
-                    _summaryGrid.Columns[index].ValueType = parentCol.ValueType;
-                    _summaryGrid.Columns[index].DefaultCellStyle.Alignment = parentCol.DefaultCellStyle.Alignment;
-                    _summaryGrid.Columns[index].DefaultCellStyle.Format = parentCol.DefaultCellStyle.Format;
-                    _summaryGrid.Columns[index].SortMode = DataGridViewColumnSortMode.NotSortable;
-                }
-                catch (Exception) { /* Handle exceptions gracefully */ }
-            }
-            _summaryGrid.ResumeLayout();
         }
 
         #endregion Set Total Grid
