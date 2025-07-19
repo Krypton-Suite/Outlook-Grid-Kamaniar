@@ -406,13 +406,13 @@ namespace OutlookGridTest
                 dataSource.Add(new Dictionary<string, object>
                 {
                     { "Id", product.Id },
-                    { "ProductName", product.Name }, // Use consistent key names as desired by your grid
-                    { "ProductCategory", product.Category },
-                    { "UnitPrice", product.Price },
-                    { "QtyInStock", product.StockQuantity },
-                    { "RestockDate", product.LastRestockDate },
-                    { "Available", product.IsAvailable },
-                    { "CustomerRating", product.Rating }
+                    { "Name", product.Name }, // Use consistent key names as desired by your grid
+                    { "Category", product.Category },
+                    { "Price", product.Price },
+                    { "StockQuantity", product.StockQuantity },
+                    { "LastRestockDate", product.LastRestockDate },
+                    { "IsAvailable", product.IsAvailable },
+                    { "Rating", product.Rating }
                     // { "ProductImage", product.ProductImage } // Include if you want to pass images to dictionary
                 });
             }

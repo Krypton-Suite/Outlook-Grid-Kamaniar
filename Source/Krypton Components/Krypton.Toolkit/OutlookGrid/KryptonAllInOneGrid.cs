@@ -130,6 +130,16 @@
         }
 
         /// <summary>
+        /// Gets the number of columns currently in the <see cref="KryptonOutlookGrid"/> control.
+        /// </summary>
+        /// <remarks>
+        /// This property provides the total count of columns displayed in the <see cref="KryptonOutlookGrid"/>.
+        /// </remarks>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public int ColumnCount => OutlookGrid.ColumnCount;
+
+        /// <summary>
         /// Gets the collection of columns in the <see cref="DataGridView"/> control.
         /// </summary>
         /// <remarks>
@@ -140,6 +150,30 @@
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public DataGridViewColumnCollection Columns => OutlookGrid.Columns;
+
+        /// <summary>
+        /// Gets the collection of selected columns in the <see cref="KryptonOutlookGrid"/> control.
+        /// </summary>
+        /// <remarks>
+        /// This property provides access to the <see cref="DataGridViewSelectedColumnCollection"/> object
+        /// that contains all the columns currently selected in the <see cref="KryptonOutlookGrid"/>.
+        /// Note that direct column selection (by clicking column headers) might behave differently
+        /// depending on the <see cref="DataGridView.SelectionMode"/> property of the underlying grid.
+        /// </remarks>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public DataGridViewSelectedColumnCollection SelectedColumns => OutlookGrid.SelectedColumns;
+
+        /// <summary>
+        /// Gets the number of rows currently in the <see cref="KryptonOutlookGrid"/> control.
+        /// </summary>
+        /// <remarks>
+        /// This property provides the total count of rows, including any new row for data entry if enabled,
+        /// in the <see cref="KryptonOutlookGrid"/>.
+        /// </remarks>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public int RowCount => OutlookGrid.RowCount;
 
         /// <summary>
         /// Gets the collection of rows in the <see cref="DataGridView"/> control.
@@ -154,6 +188,17 @@
         public DataGridViewRowCollection Rows => OutlookGrid.Rows;
 
         /// <summary>
+        /// Gets the collection of selected rows in the <see cref="KryptonOutlookGrid"/> control.
+        /// </summary>
+        /// <remarks>
+        /// This property provides access to a collection of all rows currently selected in the grid.
+        /// You can iterate through this collection to access individual selected rows.
+        /// </remarks>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public DataGridViewSelectedRowCollection SelectedRows => OutlookGrid.SelectedRows;
+
+        /// <summary>
         /// Gets the current row in the <see cref="KryptonOutlookGrid"/> control.
         /// </summary>
         /// <remarks>
@@ -163,6 +208,17 @@
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public DataGridViewRow CurrentRow => OutlookGrid.CurrentRow!;
+
+        /// <summary>
+        /// Gets the collection of selected cells in the <see cref="KryptonOutlookGrid"/> control.
+        /// </summary>
+        /// <remarks>
+        /// This property provides access to a collection of all cells currently selected in the grid.
+        /// You can iterate through this collection to access individual selected cells.
+        /// </remarks>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public DataGridViewSelectedCellCollection SelectedCells => OutlookGrid.SelectedCells;
 
         /// <summary>
         /// Gets or sets the current cell in the <see cref="KryptonOutlookGrid"/> control.
