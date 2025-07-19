@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Diagnostics;
 
 using Krypton.Toolkit;
 
@@ -311,7 +312,6 @@ namespace OutlookGridTest
             List<ProductDto> dataSource = GenerateProductData(_numberOfProductsToGenerate);
 
             outlookGrid1.SetDataSource(dataSource);
-            //outlookGrid1.AutoResizeColumnsToFit();
             kryptonOutlookGrid1.SetDataSource(dataSource);
             kryptonAllInOneGrid1.OutlookGrid.SetDataSource(dataSource);
             kryptonDataGridView1.DataSource = dataSource;
@@ -455,9 +455,39 @@ namespace OutlookGridTest
                 kryptonAllInOneGrid1.OutlookGrid.Columns["Price"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
                 kryptonAllInOneGrid1.OutlookGrid.Columns["Price"].DefaultCellStyle.Format = "N2";
             }
+
+            // Use a short timer to defer the column sizing.
+            // This is more reliable than BeginInvoke for complex layout updates.
+            /*System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
+            timer.Interval = 1; // Try a very short delay (e.g., 10 milliseconds).
+                                 // You can experiment with 1ms, 5ms, 10ms, or even 50ms if needed.
+            timer.Tick += (s, ev) =>
+            {
+                timer.Stop(); // Stop the timer so it only runs once
+                timer.Dispose(); // Dispose of the timer to clean up resources
+
+                Debug.WriteLine("TIMER TICK EXECUTING COLUMN FIT"); // Add this for debugging
+
+                // Call FitColumnsToWidth (or EnsureColumnsFitToWidth) for each grid.
+                outlookGrid1.FitColumnsToWidth(); // Or EnsureColumnsFitToWidth
+                kryptonOutlookGrid1.FitColumnsToWidth(); // Or EnsureColumnsFitToWidth
+                kryptonAllInOneGrid1.OutlookGrid.FitColumnsToWidth(); // Or EnsureColumnsFitToWidth
+            };
+            timer.Start();*/
+
+            outlookGrid1.FitColumnsToWidth();
+            kryptonOutlookGrid1.FitColumnsToWidth();
+            //kryptonAllInOneGrid1.OutlookGrid.Refresh();
+            kryptonAllInOneGrid1.OutlookGrid.FitColumnsToWidth();
         }
 
         #endregion Get Data Methods
 
+        private void Form2_Shown(object sender, EventArgs e)
+        {
+            outlookGrid1.FitColumnsToWidth();
+            kryptonOutlookGrid1.FitColumnsToWidth();
+            kryptonAllInOneGrid1.OutlookGrid.FitColumnsToWidth();
+        }
     }
 }

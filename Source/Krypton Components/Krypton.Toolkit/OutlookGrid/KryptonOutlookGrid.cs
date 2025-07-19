@@ -5323,8 +5323,8 @@ namespace Krypton.Toolkit
                         _summaryGrid.Columns.Add("ColScroll", "");
                     int totalVisibleWidth = this.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).Sum(c => c.Width);
                     int rowHeaderWidth = this.RowHeadersVisible ? this.RowHeadersWidth : 0;
-                    int availableWidth = this.Width - (rowHeaderWidth + totalVisibleWidth);
-                    _summaryGrid.Columns["ColScroll"]?.Width = Math.Max(mainGridScrollbarWidth, availableWidth);
+                    int availableWidth = this.Width - (rowHeaderWidth + totalVisibleWidth + mainGridScrollbarWidth);
+                    _summaryGrid.Columns["ColScroll"]?.Width = mainGridScrollbarWidth + availableWidth;
                     _summaryGrid.HorizontalScrollingOffset = this.HorizontalScrollingOffset;
                 }
                 else
@@ -6649,10 +6649,11 @@ namespace Krypton.Toolkit
         /// </remarks>
         public void FitColumnsToWidth(bool allowToDecrease = false, int additionalPadding = 0)
         {
+            this.Refresh();
             if (additionalPadding < 0) throw new ArgumentOutOfRangeException(nameof(additionalPadding), "Additional padding must be non-negative.");
 
             // Dynamically determine the vertical scrollbar width
-            int actualVScrollbarWidth = 5;//  10;
+            int actualVScrollbarWidth = 0;//  10;
             actualVScrollbarWidth += this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
 
             // Calculate total width of all visible columns
@@ -6664,7 +6665,8 @@ namespace Krypton.Toolkit
             int rowHeaderWidth = this.RowHeadersVisible ? this.RowHeadersWidth : 0;
 
             // Determine the available width for columns, now including dynamic scrollbar width
-            int availableWidth = this.Width - (actualVScrollbarWidth + additionalPadding + rowHeaderWidth);
+            //int availableWidth = this.Width - (actualVScrollbarWidth + additionalPadding + rowHeaderWidth);
+            int availableWidth = this.ClientRectangle.Width - (actualVScrollbarWidth + additionalPadding + rowHeaderWidth);
 
             // Determine whether adjustment is required
             if (totalVisibleWidth > 0 &&
@@ -6678,7 +6680,7 @@ namespace Krypton.Toolkit
                 // Adjust each visible column's width proportionally
                 foreach (var column in this.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible))
                 {
-                    column.Width = Convert.ToInt32(column.Width * adjustmentRatio);
+                    column.Width = Convert.ToInt32(Math.Floor(column.Width * adjustmentRatio));
                     if (_summaryGrid?.ColumnCount > column.Index)
                         _summaryGrid?.Columns[column.Index]?.Width = column.Width; // Adjust summary grid column width if it exists
                 }
