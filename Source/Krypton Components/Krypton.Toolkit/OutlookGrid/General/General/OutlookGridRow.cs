@@ -655,13 +655,13 @@ namespace Krypton.Toolkit
                 KryptonOutlookGrid grid = (KryptonOutlookGrid)DataGridView!;
                 var boldFont = grid.GridPalette?.GetContentShortTextFont(PaletteContentStyle.LabelBoldControl, PaletteState.Normal);
                 boldFont ??= new Font(grid.DefaultCellStyle.Font!, FontStyle.Bold);
-
+                int cellPadding = 3;
                 foreach (DataGridViewCell cell in this.Cells)
                 {
                     bool isSelected = cell.Selected;
                     PaletteState overallCellRenderingState = isSelected ? PaletteState.CheckedNormal : PaletteState.Normal;
                     Rectangle cellBounds = grid.GetCellDisplayRectangle(cell.ColumnIndex, rowIndex, false);
-                    Debug.WriteLine(cell == this.HeaderCell);
+
                     if (cellBounds.IntersectsWith(clipBounds))
                     {
                         DataGridViewCellStyle cellStyle = cell.InheritedStyle;
@@ -706,13 +706,30 @@ namespace Krypton.Toolkit
                             _ => TextFormatFlags.VerticalCenter | TextFormatFlags.Left,
                         };
                         string cellText = cell.FormattedValue?.ToString() ?? string.Empty;
-                        if (cell.ValueType == typeof(bool))
-                            cellText = string.Empty;
-                        else if (cell.ValueType == typeof(Image))
+                        if (cell.ValueType == typeof(bool) || cell.ValueType == typeof(Image))
                             cellText = string.Empty;
 
-                        int cellPadding = 3;
-                        Rectangle textRect = new(cellBounds.X + cellPadding, cellBounds.Y, cellBounds.Width - (2 * cellPadding), cellBounds.Height);
+                        int absoluteCellX = 0;
+                        for (int i = 0; i < cell.ColumnIndex; i++)
+                        {
+                            if (grid.Columns[i].Visible) // Only include visible columns
+                            {
+                                absoluteCellX += grid.Columns[i].Width;
+                            }
+                        }
+                        // Add the RowHeadersWidth if visible, as cells start after row headers.
+                        if (grid.RowHeadersVisible)
+                        {
+                            absoluteCellX += grid.RowHeadersWidth;
+                        }
+
+                        int columnWidth = cell.OwningColumn!.Width;
+                        Rectangle textRect = new(
+                            absoluteCellX - grid.HorizontalScrollingOffset + cellPadding,   // <--- Change for X
+                            cellBounds.Y,                                                   // Y is relative to visible row top
+                            columnWidth - (2 * cellPadding),                                // Width is full column width for layout
+                            cellBounds.Height                                               // Height is visible cell height
+                        );
 
                         TextRenderer.DrawText(graphics, cellText, boldFont, textRect, currentCellTextColor, flags);
 

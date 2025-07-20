@@ -851,6 +851,13 @@ namespace Krypton.Toolkit
             }
         }
 
+        /// <summary>
+        /// Overrides the <see cref="DataGridView.OnCurrentCellChanged"/> method to manage the selection state of group rows within the grid.
+        /// This method ensures that when the current cell changes, any previously selected group row is properly
+        /// invalidated and its selection state is cleared. It also handles the scenario where the new current cell
+        /// is a group row, preventing it from being visually selected in the standard manner.
+        /// </summary>
+        /// <param name="e">An <see cref="EventArgs"/> that contains the event data.</param>
         protected override void OnCurrentCellChanged(EventArgs e)
         {
             // Get the newly selected row (if any)
@@ -878,7 +885,7 @@ namespace Krypton.Toolkit
             {
                 // If the user navigates *onto* a group row with the keyboard,
                 // you might still want to clear the selection or prevent it from being selected visually.
-                // This depends on your desired UX.
+                // This depends on desired UX.
                 ClearSelection(); // Clear existing selections
                 _previousGroupRowSelected = newRowIndex;
                 InvalidateRow(newRowIndex); // Invalidate the new group row to ensure it's drawn correctly (e.g., without standard selection highlight)
@@ -995,6 +1002,7 @@ namespace Krypton.Toolkit
 
                 // Iterate through currently visible rows
                 var visibleRows = this.Rows.Cast<OutlookGridRow>().Where(r => r.Visible && r.DataGridView != null && (r.IsGroupRow || r.IsSummaryRow));
+                //var visibleRows = this.Rows.Cast<OutlookGridRow>().Where(r => r.Visible && r.DataGridView != null && r.IsGroupRow);
                 if (visibleRows != null)
                 {
                     foreach (DataGridViewRow row in visibleRows)
@@ -5246,6 +5254,7 @@ namespace Krypton.Toolkit
             // Configure totalGrid appearance and properties
             _summaryGrid.AllowUserToAddRows = false;
             _summaryGrid.AllowUserToDeleteRows = false;
+            _summaryGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             _summaryGrid.AutoGenerateColumns = false;
             _summaryGrid.AutoGenerateKryptonColumns = false;
             _summaryGrid.ColumnHeadersVisible = false;
@@ -5258,7 +5267,7 @@ namespace Krypton.Toolkit
             _summaryGrid.TabStop = false;
             _summaryGrid.Rows.Clear();
             _summaryGrid.Columns.Clear();
-            ConfigSummaryGridState();
+            //ConfigSummaryGridState();
             _summaryGrid.ResumeLayout();
         }
 
@@ -5316,6 +5325,8 @@ namespace Krypton.Toolkit
                 /*if (_summaryGrid.Columns.Contains("ColScroll"))
                     _summaryGrid.Columns.Remove("ColScroll");*/
                 _summaryGrid.Height = _summaryGrid.Rows[0].Height;
+                //var sHeight = (_summaryGrid.Rows[0] as OutlookGridRow)!.GetPreferredHeight(0, DataGridViewAutoSizeRowMode.AllCells, false);
+                //_summaryGrid.Height = sHeight;
                 int mainGridScrollbarWidth = this.VerticalScrollBar.Visible ? this.VerticalScrollBar.Width : 0;
                 if (mainGridScrollbarWidth > 0)
                 {
@@ -5323,9 +5334,15 @@ namespace Krypton.Toolkit
                         _summaryGrid.Columns.Add("ColScroll", "");
                     int totalVisibleWidth = this.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).Sum(c => c.Width);
                     int rowHeaderWidth = this.RowHeadersVisible ? this.RowHeadersWidth : 0;
-                    int availableWidth = this.Width - (rowHeaderWidth + totalVisibleWidth + mainGridScrollbarWidth);
-                    _summaryGrid.Columns["ColScroll"]?.Width = mainGridScrollbarWidth + availableWidth;
+                    //int availableWidth = this.Width - (rowHeaderWidth + totalVisibleWidth + mainGridScrollbarWidth);
+                    int availableWidth = this.Width - (rowHeaderWidth + totalVisibleWidth);
+                    //_summaryGrid.Columns["ColScroll"]?.Width = mainGridScrollbarWidth + availableWidth;
+                    _summaryGrid.Columns["ColScroll"]?.Width = Math.Max(mainGridScrollbarWidth, availableWidth);
                     _summaryGrid.HorizontalScrollingOffset = this.HorizontalScrollingOffset;
+                    if (availableWidth - mainGridScrollbarWidth > 0)
+                        _summaryGrid.Columns["ColScroll"]?.Visible = false;
+                    else
+                        _summaryGrid.Columns["ColScroll"]?.Visible = true;
                 }
                 else
                 {
@@ -6337,7 +6354,8 @@ namespace Krypton.Toolkit
             if (e.StateChanged == DataGridViewElementStates.Visible)
             {
                 _searchToolBar?.SetColumns(this.Columns);
-                _summaryGrid?.Columns[e.Column.Index].Visible = this.Columns[e.Column.Index].Visible;
+                if (_summaryGrid?.Columns.Count > e.Column.Index)
+                    _summaryGrid?.Columns[e.Column.Index]?.Visible = this.Columns[e.Column.Index].Visible;
                 AdjustSummaryGridSize();
             }
             base.OnColumnStateChanged(e);

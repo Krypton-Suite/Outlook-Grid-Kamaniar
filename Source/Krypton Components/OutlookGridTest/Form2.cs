@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Diagnostics;
 
 using Krypton.Toolkit;
 
@@ -45,6 +44,13 @@ namespace OutlookGridTest
             List<ProductDto> dataSource = GenerateProductData(_numberOfProductsToGenerate);
             AfterSetDataSource(dataSource);
             SetButtonText();
+        }
+
+        private void Form2_Shown(object sender, EventArgs e)
+        {
+            outlookGrid1.FitColumnsToWidth();
+            kryptonOutlookGrid1.FitColumnsToWidth();
+            kryptonAllInOneGrid1.OutlookGrid.FitColumnsToWidth();
         }
 
         private void TxtRecords_TextChanged(object sender, EventArgs e)
@@ -456,24 +462,13 @@ namespace OutlookGridTest
                 kryptonAllInOneGrid1.OutlookGrid.Columns["Price"].DefaultCellStyle.Format = "N2";
             }
 
-            // Use a short timer to defer the column sizing.
-            // This is more reliable than BeginInvoke for complex layout updates.
-            /*System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
-            timer.Interval = 1; // Try a very short delay (e.g., 10 milliseconds).
-                                 // You can experiment with 1ms, 5ms, 10ms, or even 50ms if needed.
-            timer.Tick += (s, ev) =>
+            if (outlookGrid1.Columns.Contains("Id"))
             {
-                timer.Stop(); // Stop the timer so it only runs once
-                timer.Dispose(); // Dispose of the timer to clean up resources
-
-                Debug.WriteLine("TIMER TICK EXECUTING COLUMN FIT"); // Add this for debugging
-
-                // Call FitColumnsToWidth (or EnsureColumnsFitToWidth) for each grid.
-                outlookGrid1.FitColumnsToWidth(); // Or EnsureColumnsFitToWidth
-                kryptonOutlookGrid1.FitColumnsToWidth(); // Or EnsureColumnsFitToWidth
-                kryptonAllInOneGrid1.OutlookGrid.FitColumnsToWidth(); // Or EnsureColumnsFitToWidth
-            };
-            timer.Start();*/
+                outlookGrid1.Columns["Id"].Visible = false;
+                kryptonOutlookGrid1.Columns["Id"].Visible = false;
+                kryptonAllInOneGrid1.Columns["Id"].Visible = false;
+                BtnShowIdInColumnContext.PerformClick();
+            }
 
             outlookGrid1.FitColumnsToWidth();
             kryptonOutlookGrid1.FitColumnsToWidth();
@@ -483,11 +478,5 @@ namespace OutlookGridTest
 
         #endregion Get Data Methods
 
-        private void Form2_Shown(object sender, EventArgs e)
-        {
-            outlookGrid1.FitColumnsToWidth();
-            kryptonOutlookGrid1.FitColumnsToWidth();
-            kryptonAllInOneGrid1.OutlookGrid.FitColumnsToWidth();
-        }
     }
 }
